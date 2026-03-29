@@ -3,6 +3,7 @@ pub mod color;
 pub mod layout;
 pub mod position;
 pub mod render;
+pub mod runes;
 pub mod style;
 pub mod table;
 
@@ -14,5 +15,6 @@ pub use border::{
 pub use color::{Color, blend_1d, complementary, darken, is_dark, lighten};
 pub use layout::{height, join_horizontal, join_vertical, place, place_horizontal, place_vertical, width};
 pub use position::Position;
-pub use style::{Props, Style};
+pub use runes::{StyleRange, style_ranges, style_runes};
+pub use style::{Props, Style, UnderlineStyle};
 pub use table::{HEADER_ROW, Table};

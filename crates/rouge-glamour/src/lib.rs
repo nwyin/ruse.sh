@@ -16,3 +16,17 @@ pub fn render(markdown: &str, theme: &str) -> String {
 pub fn render_dark(markdown: &str) -> String {
     render(markdown, "dark")
 }
+
+/// Render markdown using the GLAMOUR_STYLE environment variable for theme
+/// selection, falling back to "dark" if not set.
+pub fn render_with_env(markdown: &str) -> String {
+    let theme = std::env::var("GLAMOUR_STYLE").unwrap_or_else(|_| "dark".into());
+    render(markdown, &theme)
+}
+
+/// Load a theme from a JSON file.
+pub fn load_theme(path: &std::path::Path) -> Result<StyleConfig, Box<dyn std::error::Error>> {
+    let json = std::fs::read_to_string(path)?;
+    let config: StyleConfig = serde_json::from_str(&json)?;
+    Ok(config)
+}

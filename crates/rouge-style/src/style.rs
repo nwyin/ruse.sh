@@ -4,6 +4,23 @@ use rouge_colorprofile::Color;
 use crate::border::{Border, NO_BORDER};
 use crate::position::Position;
 
+/// Underline style variants for terminal rendering.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum UnderlineStyle {
+    #[default]
+    None,
+    /// Standard single underline (SGR 4).
+    Single,
+    /// Double underline (SGR 21).
+    Double,
+    /// Curly/wavy underline (SGR 4:3).
+    Curly,
+    /// Dotted underline (SGR 4:4).
+    Dotted,
+    /// Dashed underline (SGR 4:5).
+    Dashed,
+}
+
 bitflags! {
     /// Tracks which properties have been explicitly set on a [`Style`].
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -50,6 +67,8 @@ bitflags! {
         const MAX_HEIGHT        = 1 << 39;
         const TAB_WIDTH         = 1 << 40;
         const INLINE            = 1 << 41;
+        const UNDERLINE_STYLE   = 1 << 42;
+        const UNDERLINE_COLOR   = 1 << 43;
     }
 }
 
@@ -73,6 +92,10 @@ pub struct Style {
     pub(crate) props: Props,
     /// Boolean attribute values (only meaningful for bits also set in `props`).
     pub(crate) attrs: Props,
+
+    // Underline
+    pub(crate) underline_style: UnderlineStyle,
+    pub(crate) underline_color: Color,
 
     // Colors
     pub(crate) fg: Color,
@@ -128,6 +151,8 @@ impl Style {
         Self {
             props: Props::empty(),
             attrs: Props::empty(),
+            underline_style: UnderlineStyle::None,
+            underline_color: Color::NoColor,
             fg: Color::NoColor,
             bg: Color::NoColor,
             margin_bg: Color::NoColor,
@@ -210,6 +235,25 @@ impl Style {
 
     pub fn underline_spaces(self, v: bool) -> Self {
         self.set_bool(Props::UNDERLINE_SPACES, v)
+    }
+
+    /// Set the underline style. This also implicitly enables the `UNDERLINE`
+    /// boolean attribute when the style is not `None`.
+    pub fn set_underline_style(mut self, style: UnderlineStyle) -> Self {
+        self.props |= Props::UNDERLINE_STYLE;
+        self.underline_style = style;
+        // Automatically set the underline bool when a non-None style is specified
+        if style != UnderlineStyle::None {
+            self = self.underline(true);
+        }
+        self
+    }
+
+    /// Set the underline color (SGR 58).
+    pub fn underline_color(mut self, color: Color) -> Self {
+        self.props |= Props::UNDERLINE_COLOR;
+        self.underline_color = color;
+        self
     }
 
     pub fn strikethrough_spaces(self, v: bool) -> Self {
@@ -574,6 +618,14 @@ impl Style {
         }
         if to_inherit.contains(Props::BORDER_LEFT_BG) {
             self.border_left_bg = other.border_left_bg;
+        }
+
+        // Underline
+        if to_inherit.contains(Props::UNDERLINE_STYLE) {
+            self.underline_style = other.underline_style;
+        }
+        if to_inherit.contains(Props::UNDERLINE_COLOR) {
+            self.underline_color = other.underline_color;
         }
 
         // Dimensions

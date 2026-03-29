@@ -3,9 +3,26 @@ use rouge_colorprofile::Color;
 
 use crate::border::NO_BORDER;
 use crate::position::Position;
-use crate::style::{Props, Style};
+use crate::style::{Props, Style, UnderlineStyle};
 
 impl Style {
+    /// Build the text-level SGR style from this Style (colors + text attributes only).
+    /// Does not include layout, padding, borders, etc.
+    pub(crate) fn text_sgr(&self) -> SgrStyle {
+        let bold = self.get_bool(Props::BOLD);
+        let italic = self.get_bool(Props::ITALIC);
+        let underline = self.get_bool(Props::UNDERLINE);
+        let strikethrough = self.get_bool(Props::STRIKETHROUGH);
+        let reverse = self.get_bool(Props::REVERSE);
+        let blink = self.get_bool(Props::BLINK);
+        let faint = self.get_bool(Props::FAINT);
+        let fg = if self.is_set(Props::FOREGROUND) { self.fg } else { Color::NoColor };
+        let bg = if self.is_set(Props::BACKGROUND) { self.bg } else { Color::NoColor };
+        let ul_style = if self.is_set(Props::UNDERLINE_STYLE) { self.underline_style } else { UnderlineStyle::None };
+        let ul_color = if self.is_set(Props::UNDERLINE_COLOR) { self.underline_color } else { Color::NoColor };
+        build_sgr(bold, italic, underline, strikethrough, reverse, blink, faint, fg, bg, ul_style, ul_color)
+    }
+
     /// Render one or more strings with this style applied.
     ///
     /// Multiple strings are joined with a space before rendering,
@@ -27,6 +44,8 @@ impl Style {
 
         let fg = if self.is_set(Props::FOREGROUND) { self.fg } else { Color::NoColor };
         let bg = if self.is_set(Props::BACKGROUND) { self.bg } else { Color::NoColor };
+        let ul_style = if self.is_set(Props::UNDERLINE_STYLE) { self.underline_style } else { UnderlineStyle::None };
+        let ul_color = if self.is_set(Props::UNDERLINE_COLOR) { self.underline_color } else { Color::NoColor };
 
         let width = if self.is_set(Props::WIDTH) { self.width as usize } else { 0 };
         let height = if self.is_set(Props::HEIGHT) { self.height as usize } else { 0 };
@@ -72,7 +91,7 @@ impl Style {
         }
 
         // 5. Apply text styling
-        let te = build_sgr(bold, italic, underline, strikethrough, reverse, blink, faint, fg, bg);
+        let te = build_sgr(bold, italic, underline, strikethrough, reverse, blink, faint, fg, bg, ul_style, ul_color);
         let te_whitespace = build_whitespace_sgr(reverse, fg, bg, color_whitespace);
 
         {
@@ -357,7 +376,7 @@ impl Style {
 }
 
 /// Build the main text SGR style.
-fn build_sgr(
+pub(crate) fn build_sgr(
     bold: bool,
     italic: bool,
     underline: bool,
@@ -367,6 +386,8 @@ fn build_sgr(
     faint: bool,
     fg: Color,
     bg: Color,
+    ul_style: UnderlineStyle,
+    ul_color: Color,
 ) -> SgrStyle {
     let mut te = SgrStyle::new();
     if bold {
@@ -375,8 +396,19 @@ fn build_sgr(
     if italic {
         te = te.italic();
     }
-    if underline {
-        te = te.underline();
+    // Apply underline: if an explicit underline style is set, use it;
+    // otherwise fall back to the simple underline boolean.
+    match ul_style {
+        UnderlineStyle::None => {
+            if underline {
+                te = te.underline();
+            }
+        }
+        UnderlineStyle::Single => te = te.underline(),
+        UnderlineStyle::Double => te = te.double_underline(),
+        UnderlineStyle::Curly => te = te.curly_underline(),
+        UnderlineStyle::Dotted => te = te.dotted_underline(),
+        UnderlineStyle::Dashed => te = te.dashed_underline(),
     }
     if strikethrough {
         te = te.strikethrough();
@@ -392,6 +424,7 @@ fn build_sgr(
     }
     te = apply_fg(te, fg);
     te = apply_bg(te, bg);
+    te = apply_ul(te, ul_color);
     te
 }
 
@@ -429,6 +462,16 @@ fn apply_bg(te: SgrStyle, c: Color) -> SgrStyle {
         Color::Basic(n) => te.bg_basic(n),
         Color::Indexed(n) => te.bg_256(n),
         Color::Rgb { r, g, b } => te.bg_rgb(r, g, b),
+    }
+}
+
+fn apply_ul(te: SgrStyle, c: Color) -> SgrStyle {
+    match c {
+        Color::NoColor => te,
+        // Basic colors 0-15 map to indexed 0-15
+        Color::Basic(n) => te.ul_256(n),
+        Color::Indexed(n) => te.ul_256(n),
+        Color::Rgb { r, g, b } => te.ul_rgb(r, g, b),
     }
 }
 
@@ -684,5 +727,55 @@ mod tests {
         assert_eq!(first_char_str("ab"), "a");
         // Multi-byte
         assert_eq!(first_char_str("\u{250C}abc"), "\u{250C}");
+    }
+
+    #[test]
+    fn test_render_underline_single() {
+        let s = Style::new().set_underline_style(crate::style::UnderlineStyle::Single);
+        let result = s.render(&["hi"]);
+        // SGR 4 = single underline
+        assert!(result.contains("\x1b[4m"));
+    }
+
+    #[test]
+    fn test_render_underline_curly() {
+        let s = Style::new().set_underline_style(crate::style::UnderlineStyle::Curly);
+        let result = s.render(&["hi"]);
+        // SGR 4:3 = curly underline
+        assert!(result.contains("4:3"));
+    }
+
+    #[test]
+    fn test_render_underline_double() {
+        let s = Style::new().set_underline_style(crate::style::UnderlineStyle::Double);
+        let result = s.render(&["hi"]);
+        // SGR 21 = double underline
+        assert!(result.contains("\x1b[21m") || result.contains(";21m") || result.contains(";21;"));
+    }
+
+    #[test]
+    fn test_render_underline_color() {
+        use rouge_colorprofile::Color;
+        let s = Style::new()
+            .set_underline_style(crate::style::UnderlineStyle::Curly)
+            .underline_color(Color::Rgb { r: 255, g: 0, b: 0 });
+        let result = s.render(&["hi"]);
+        // Should contain curly underline AND underline color
+        assert!(result.contains("4:3"));
+        assert!(result.contains("58;2;255;0;0"));
+    }
+
+    #[test]
+    fn test_render_underline_dotted() {
+        let s = Style::new().set_underline_style(crate::style::UnderlineStyle::Dotted);
+        let result = s.render(&["hi"]);
+        assert!(result.contains("4:4"));
+    }
+
+    #[test]
+    fn test_render_underline_dashed() {
+        let s = Style::new().set_underline_style(crate::style::UnderlineStyle::Dashed);
+        let result = s.render(&["hi"]);
+        assert!(result.contains("4:5"));
     }
 }
