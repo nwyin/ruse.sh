@@ -114,6 +114,14 @@ File system browser with directory navigation.
 "#;
 
 impl Model for ViewportDemo {
+    fn init(&mut self) -> Cmd {
+        // Set content immediately so first render has something to show
+        let rendered = ruse::glamour::render_dark(SAMPLE_MARKDOWN);
+        self.viewport.set_content(&rendered);
+        self.ready = true;
+        None
+    }
+
     fn update(&mut self, msg: Msg) -> Cmd {
         if let Msg::KeyPress(key) = &msg {
             match key.code {
@@ -127,7 +135,6 @@ impl Model for ViewportDemo {
             self.viewport.set_width(*width as usize - 4); // account for border
             self.viewport.set_height(*height as usize - 6); // account for border + header/footer
             if !self.ready {
-                // Render markdown content
                 let rendered = ruse::glamour::render_dark(SAMPLE_MARKDOWN);
                 self.viewport.set_content(&rendered);
                 self.ready = true;

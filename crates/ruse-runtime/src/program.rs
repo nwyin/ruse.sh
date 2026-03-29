@@ -285,6 +285,14 @@ impl<M: Model> Program<M> {
             let _ = cmd_tx.send(cmd_inner);
         }
 
+        // Send initial WindowSize so the model can size itself on first frame
+        if let Some(cmd_inner) = self.model.update(Msg::WindowSize {
+            width: term_w,
+            height: term_h,
+        }) {
+            let _ = cmd_tx.send(cmd_inner);
+        }
+
         // Render initial view
         if !self.disable_renderer {
             let view = self.model.view();
