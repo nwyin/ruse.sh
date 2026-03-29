@@ -1,0 +1,14 @@
+[package]
+name = "ruse-components"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+ruse-ansi.workspace = true
+ruse-style.workspace = true
+ruse-runtime.workspace = true
+ruse-harmonica.workspace = true
+unicode-width.workspace = true
+unicode-segmentation.workspace = true
+crossterm.workspace = true

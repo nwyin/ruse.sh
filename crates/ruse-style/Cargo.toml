@@ -1,0 +1,12 @@
+[package]
+name = "ruse-style"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+ruse-ansi.workspace = true
+ruse-colorprofile.workspace = true
+bitflags.workspace = true
+palette.workspace = true
+unicode-width.workspace = true

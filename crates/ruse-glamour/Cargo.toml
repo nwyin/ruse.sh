@@ -1,0 +1,13 @@
+[package]
+name = "ruse-glamour"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+ruse-ansi.workspace = true
+ruse-style.workspace = true
+pulldown-cmark.workspace = true
+syntect.workspace = true
+serde.workspace = true
+serde_json.workspace = true

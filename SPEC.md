@@ -1,4 +1,4 @@
-# Rouge.sh — Rust Reimplementation of the Charm.sh TUI Ecosystem
+# Ruse.sh — Rust Reimplementation of the Charm.sh TUI Ecosystem
 
 A complete Rust port of the Charm.sh terminal UI stack: bubbletea (Elm architecture runtime), lipgloss (styling/layout), bubbles (components), glamour (markdown), harmonica (animations), colorprofile (terminal detection), and x/ansi (ANSI utilities).
 
@@ -8,13 +8,13 @@ A complete Rust port of the Charm.sh terminal UI stack: bubbletea (Elm architect
 
 1. [Architecture Overview](#1-architecture-overview)
 2. [Workspace Structure](#2-workspace-structure)
-3. [Core Runtime (rouge-runtime)](#3-core-runtime)
-4. [ANSI Utilities (rouge-ansi)](#4-ansi-utilities)
-5. [Color Profile Detection (rouge-colorprofile)](#5-color-profile-detection)
-6. [Styling & Layout (rouge-style)](#6-styling--layout)
-7. [Animation (rouge-harmonica)](#7-animation)
-8. [Components (rouge-components)](#8-components)
-9. [Markdown Rendering (rouge-glamour)](#9-markdown-rendering)
+3. [Core Runtime (ruse-runtime)](#3-core-runtime)
+4. [ANSI Utilities (ruse-ansi)](#4-ansi-utilities)
+5. [Color Profile Detection (ruse-colorprofile)](#5-color-profile-detection)
+6. [Styling & Layout (ruse-style)](#6-styling--layout)
+7. [Animation (ruse-harmonica)](#7-animation)
+8. [Components (ruse-components)](#8-components)
+9. [Markdown Rendering (ruse-glamour)](#9-markdown-rendering)
 10. [Dependencies](#10-dependencies)
 11. [Implementation Phases](#11-implementation-phases)
 12. [Key Design Decisions](#12-key-design-decisions)
@@ -27,13 +27,13 @@ A complete Rust port of the Charm.sh terminal UI stack: bubbletea (Elm architect
 
 | Go Library | Purpose | Rust Crate |
 |---|---|---|
-| `bubbletea` | Elm architecture TUI runtime | `rouge-runtime` |
-| `x/ansi` | ANSI sequence parsing/generation, string measurement | `rouge-ansi` |
-| `colorprofile` | Terminal color capability detection | `rouge-colorprofile` |
-| `lipgloss` | Styling, layout, borders, tables | `rouge-style` |
-| `harmonica` | Spring/projectile physics animation | `rouge-harmonica` |
-| `bubbles` | 14 reusable UI components | `rouge-components` |
-| `glamour` | Markdown rendering to ANSI | `rouge-glamour` |
+| `bubbletea` | Elm architecture TUI runtime | `ruse-runtime` |
+| `x/ansi` | ANSI sequence parsing/generation, string measurement | `ruse-ansi` |
+| `colorprofile` | Terminal color capability detection | `ruse-colorprofile` |
+| `lipgloss` | Styling, layout, borders, tables | `ruse-style` |
+| `harmonica` | Spring/projectile physics animation | `ruse-harmonica` |
+| `bubbles` | 14 reusable UI components | `ruse-components` |
+| `glamour` | Markdown rendering to ANSI | `ruse-glamour` |
 
 ### The Five Fundamental Design Tensions
 
@@ -50,35 +50,35 @@ A complete Rust port of the Charm.sh terminal UI stack: bubbletea (Elm architect
 ## 2. Workspace Structure
 
 ```
-rouge.sh/
+ruse.sh/
   Cargo.toml                    # workspace root
   crates/
-    rouge-ansi/                 # ANSI parsing, SGR generation, string width, wrap, truncate, strip
-    rouge-colorprofile/         # Terminal color profile detection + conversion
-    rouge-harmonica/            # Spring + projectile physics animation
-    rouge-style/                # Style builder, borders, layout, tables (the lipgloss port)
-    rouge-runtime/              # Elm architecture runtime (the bubbletea port)
-    rouge-components/           # All 14 UI components (feature-gated)
-    rouge-glamour/              # Markdown rendering
-    rouge/                      # Facade crate re-exporting everything
+    ruse-ansi/                 # ANSI parsing, SGR generation, string width, wrap, truncate, strip
+    ruse-colorprofile/         # Terminal color profile detection + conversion
+    ruse-harmonica/            # Spring + projectile physics animation
+    ruse-style/                # Style builder, borders, layout, tables (the lipgloss port)
+    ruse-runtime/              # Elm architecture runtime (the bubbletea port)
+    ruse-components/           # All 14 UI components (feature-gated)
+    ruse-glamour/              # Markdown rendering
+    ruse/                      # Facade crate re-exporting everything
 ```
 
 ### Dependency Graph
 
 ```
-rouge-ansi          (standalone)
-rouge-colorprofile  -> rouge-ansi
-rouge-harmonica     (standalone)
-rouge-style         -> rouge-ansi, rouge-colorprofile
-rouge-runtime       -> rouge-ansi, rouge-colorprofile, rouge-style
-rouge-components    -> rouge-runtime, rouge-style, rouge-harmonica
-rouge-glamour       -> rouge-style, rouge-ansi
-rouge               -> all of the above (feature-gated re-exports)
+ruse-ansi          (standalone)
+ruse-colorprofile  -> ruse-ansi
+ruse-harmonica     (standalone)
+ruse-style         -> ruse-ansi, ruse-colorprofile
+ruse-runtime       -> ruse-ansi, ruse-colorprofile, ruse-style
+ruse-components    -> ruse-runtime, ruse-style, ruse-harmonica
+ruse-glamour       -> ruse-style, ruse-ansi
+ruse               -> all of the above (feature-gated re-exports)
 ```
 
 ---
 
-## 3. Core Runtime (rouge-runtime)
+## 3. Core Runtime (ruse-runtime)
 
 Port of: `charm.sh/bubbletea`
 
@@ -325,7 +325,7 @@ Two implementations:
 ### 3.8 Module Layout
 
 ```
-rouge-runtime/src/
+ruse-runtime/src/
   lib.rs              # re-exports
   model.rs            # Model trait
   msg.rs              # Msg enum, KeyEvent, MouseEvent, etc.
@@ -352,7 +352,7 @@ rouge-runtime/src/
 
 ---
 
-## 4. ANSI Utilities (rouge-ansi)
+## 4. ANSI Utilities (ruse-ansi)
 
 Port of: `charmbracelet/x/ansi`
 
@@ -406,7 +406,7 @@ Wraps an `io::Write`, tracking current SGR pen state. On newlines, resets style,
 
 ---
 
-## 5. Color Profile Detection (rouge-colorprofile)
+## 5. Color Profile Detection (ruse-colorprofile)
 
 Port of: `charmbracelet/colorprofile`
 
@@ -473,7 +473,7 @@ Parses ANSI SGR sequences on-the-fly, replaces color parameters with profile-app
 
 ---
 
-## 6. Styling & Layout (rouge-style)
+## 6. Styling & Layout (ruse-style)
 
 Port of: `charmbracelet/lipgloss`
 
@@ -767,7 +767,7 @@ The resizing algorithm (from `lipgloss/table/resizing.go`) handles column width 
 
 ---
 
-## 7. Animation (rouge-harmonica)
+## 7. Animation (ruse-harmonica)
 
 Port of: `charmbracelet/harmonica`
 
@@ -818,7 +818,7 @@ Self-contained math, zero dependencies, easy to port and test.
 
 ---
 
-## 8. Components (rouge-components)
+## 8. Components (ruse-components)
 
 Port of: `charmbracelet/bubbles` (14 components)
 
@@ -914,7 +914,7 @@ pub trait KeyMap {
 #### Progress — Progress bar
 - Customizable fill/empty characters and colors
 - Color gradients (single or blended via `blend_1d`)
-- Spring-based smooth animation (uses `rouge-harmonica`)
+- Spring-based smooth animation (uses `ruse-harmonica`)
 - Percentage display (optional)
 - Configurable width
 
@@ -988,7 +988,7 @@ progress = ["harmonica"]
 
 ---
 
-## 9. Markdown Rendering (rouge-glamour)
+## 9. Markdown Rendering (ruse-glamour)
 
 Port of: `charmbracelet/glamour`
 
@@ -1021,7 +1021,7 @@ pub fn render(markdown: &str, style: &str) -> Result<String, Error>;
 
 - **Parser**: `pulldown-cmark` (CommonMark + GFM extensions: tables, strikethrough, tasklists)
 - **Syntax highlighting**: `syntect` (replaces Go's Chroma)
-- **Rendering**: Event-driven walk of pulldown-cmark events, emitting styled ANSI output using `rouge-style`
+- **Rendering**: Event-driven walk of pulldown-cmark events, emitting styled ANSI output using `ruse-style`
 
 ### 9.3 Style System
 
@@ -1073,35 +1073,35 @@ Builtin themes (dracula, tokyo-night, dark, light) embedded via `include_str!` f
 
 | Crate | Purpose | Used By |
 |---|---|---|
-| `crossterm` | Terminal I/O, raw mode, events, cursor, screen | `rouge-runtime` |
-| `tokio` (full) | Async runtime, tasks, channels, signals, timers | `rouge-runtime` |
-| `tokio-util` | CancellationToken | `rouge-runtime` |
-| `bitflags` | Efficient property bitfield | `rouge-style` |
-| `unicode-width` | Character cell width measurement | `rouge-ansi` |
-| `unicode-segmentation` | Grapheme cluster handling | `rouge-ansi` |
-| `palette` | CIELAB color space for blending | `rouge-style` |
+| `crossterm` | Terminal I/O, raw mode, events, cursor, screen | `ruse-runtime` |
+| `tokio` (full) | Async runtime, tasks, channels, signals, timers | `ruse-runtime` |
+| `tokio-util` | CancellationToken | `ruse-runtime` |
+| `bitflags` | Efficient property bitfield | `ruse-style` |
+| `unicode-width` | Character cell width measurement | `ruse-ansi` |
+| `unicode-segmentation` | Grapheme cluster handling | `ruse-ansi` |
+| `palette` | CIELAB color space for blending | `ruse-style` |
 | `thiserror` | Error derives | all crates |
 
 ### Components
 
 | Crate | Purpose | Used By |
 |---|---|---|
-| `sublime_fuzzy` | Fuzzy string matching | `rouge-components` (list) |
+| `sublime_fuzzy` | Fuzzy string matching | `ruse-components` (list) |
 
 ### Glamour
 
 | Crate | Purpose | Used By |
 |---|---|---|
-| `pulldown-cmark` | Markdown parsing (CommonMark + GFM) | `rouge-glamour` |
-| `syntect` | Syntax highlighting | `rouge-glamour` |
-| `serde` + `serde_json` | Style config deserialization | `rouge-glamour` |
+| `pulldown-cmark` | Markdown parsing (CommonMark + GFM) | `ruse-glamour` |
+| `syntect` | Syntax highlighting | `ruse-glamour` |
+| `serde` + `serde_json` | Style config deserialization | `ruse-glamour` |
 
 ### What We Don't Need
 
 - **`termion`**: crossterm covers everything and is cross-platform
-- **`ansi_term`/`owo-colors`/`colored`**: rouge IS the styling library
-- **`textwrap`**: needs ANSI-aware wrapping, built custom in `rouge-ansi`
-- **`ratatui`**: rouge is a standalone framework, not built on ratatui
+- **`ansi_term`/`owo-colors`/`colored`**: ruse IS the styling library
+- **`textwrap`**: needs ANSI-aware wrapping, built custom in `ruse-ansi`
+- **`ratatui`**: ruse is a standalone framework, not built on ratatui
 
 ---
 
@@ -1111,84 +1111,84 @@ Builtin themes (dracula, tokyo-night, dark, light) embedded via `include_str!` f
 
 | Task | Crate | Notes |
 |---|---|---|
-| ANSI parser, SGR builder | `rouge-ansi` | Core dependency for everything |
-| `string_width`, `strip`, `truncate`, `wrap` | `rouge-ansi` | ANSI-aware string ops |
-| Spring + Projectile | `rouge-harmonica` | Self-contained math, easy to test |
-| Key binding system | `rouge-components` | Foundation for all interactive components |
+| ANSI parser, SGR builder | `ruse-ansi` | Core dependency for everything |
+| `string_width`, `strip`, `truncate`, `wrap` | `ruse-ansi` | ANSI-aware string ops |
+| Spring + Projectile | `ruse-harmonica` | Self-contained math, easy to test |
+| Key binding system | `ruse-components` | Foundation for all interactive components |
 
 ### Phase 2: Colors & Style (Weeks 3-4)
 
 | Task | Crate | Notes |
 |---|---|---|
-| Color enum, parsing, helpers | `rouge-style` | |
-| Profile detection | `rouge-colorprofile` | Environment + terminfo |
-| Color conversion + Writer | `rouge-colorprofile` | Downsampling |
-| Style struct, bitfield, all setters/getters | `rouge-style` | ~50 properties |
-| Render pipeline (all 13 steps) | `rouge-style` | Core rendering |
-| Border system + predefined borders | `rouge-style` | |
-| Position, alignment functions | `rouge-style` | |
+| Color enum, parsing, helpers | `ruse-style` | |
+| Profile detection | `ruse-colorprofile` | Environment + terminfo |
+| Color conversion + Writer | `ruse-colorprofile` | Downsampling |
+| Style struct, bitfield, all setters/getters | `ruse-style` | ~50 properties |
+| Render pipeline (all 13 steps) | `ruse-style` | Core rendering |
+| Border system + predefined borders | `ruse-style` | |
+| Position, alignment functions | `ruse-style` | |
 
 ### Phase 3: Layout & Table (Weeks 5-6)
 
 | Task | Crate | Notes |
 |---|---|---|
-| `join_horizontal`, `join_vertical` | `rouge-style` | |
-| `place`, `place_horizontal`, `place_vertical` | `rouge-style` | |
-| Whitespace renderer | `rouge-style` | |
-| Color blending (Blend1D, Blend2D) | `rouge-style` | CIELAB via `palette` |
-| Gradient border rendering | `rouge-style` | |
-| Table data trait + builder | `rouge-style` | |
-| Table resizer algorithm | `rouge-style` | Complex column optimization |
+| `join_horizontal`, `join_vertical` | `ruse-style` | |
+| `place`, `place_horizontal`, `place_vertical` | `ruse-style` | |
+| Whitespace renderer | `ruse-style` | |
+| Color blending (Blend1D, Blend2D) | `ruse-style` | CIELAB via `palette` |
+| Gradient border rendering | `ruse-style` | |
+| Table data trait + builder | `ruse-style` | |
+| Table resizer algorithm | `ruse-style` | Complex column optimization |
 
 ### Phase 4: Runtime (Weeks 7-9)
 
 | Task | Crate | Notes |
 |---|---|---|
-| Msg, Cmd, View types | `rouge-runtime` | |
-| Model trait | `rouge-runtime` | |
-| Program struct + builder | `rouge-runtime` | |
-| Terminal guard (raw mode setup/teardown) | `rouge-runtime` | |
-| Input reader (crossterm events -> Msg) | `rouge-runtime` | |
-| Signal handler | `rouge-runtime` | |
-| Event loop | `rouge-runtime` | |
-| Command handler (sync + async) | `rouge-runtime` | |
-| Batch + Sequence execution | `rouge-runtime` | |
-| Render ticker + FullRenderer | `rouge-runtime` | FPS-based, syncd output |
-| Alt screen, cursor, mouse mode management | `rouge-runtime` | |
-| Built-in commands: tick, every, clipboard, exec | `rouge-runtime` | |
-| Counter example, working end-to-end | `rouge-runtime` | Milestone! |
+| Msg, Cmd, View types | `ruse-runtime` | |
+| Model trait | `ruse-runtime` | |
+| Program struct + builder | `ruse-runtime` | |
+| Terminal guard (raw mode setup/teardown) | `ruse-runtime` | |
+| Input reader (crossterm events -> Msg) | `ruse-runtime` | |
+| Signal handler | `ruse-runtime` | |
+| Event loop | `ruse-runtime` | |
+| Command handler (sync + async) | `ruse-runtime` | |
+| Batch + Sequence execution | `ruse-runtime` | |
+| Render ticker + FullRenderer | `ruse-runtime` | FPS-based, syncd output |
+| Alt screen, cursor, mouse mode management | `ruse-runtime` | |
+| Built-in commands: tick, every, clipboard, exec | `ruse-runtime` | |
+| Counter example, working end-to-end | `ruse-runtime` | Milestone! |
 
 ### Phase 5: Simple Components (Weeks 10-11)
 
 | Task | Crate | Notes |
 |---|---|---|
-| Spinner (12 predefined animations) | `rouge-components` | First component, validates tick pattern |
-| Cursor (blink, static, hidden) | `rouge-components` | Needed by textinput/textarea |
-| Paginator (Arabic + Dots) | `rouge-components` | Pure logic |
-| Timer + Stopwatch | `rouge-components` | Tick-based |
-| Progress bar (with spring animation) | `rouge-components` | Validates harmonica integration |
-| Help (short + full modes) | `rouge-components` | Validates KeyMap trait |
+| Spinner (12 predefined animations) | `ruse-components` | First component, validates tick pattern |
+| Cursor (blink, static, hidden) | `ruse-components` | Needed by textinput/textarea |
+| Paginator (Arabic + Dots) | `ruse-components` | Pure logic |
+| Timer + Stopwatch | `ruse-components` | Tick-based |
+| Progress bar (with spring animation) | `ruse-components` | Validates harmonica integration |
+| Help (short + full modes) | `ruse-components` | Validates KeyMap trait |
 
 ### Phase 6: Complex Components (Weeks 12-14)
 
 | Task | Crate | Notes |
 |---|---|---|
-| Viewport (scrolling, wrapping, gutter, highlights) | `rouge-components` | Foundation for table/textarea/list |
-| TextInput (cursor, scrolling, suggestions, paste) | `rouge-components` | |
-| TextArea (multiline, line numbers, word ops) | `rouge-components` | Most complex component |
-| Table (columns, rows, selection, viewport scroll) | `rouge-components` | |
-| List (filtering, delegate, pagination, spinner) | `rouge-components` | Most composed component |
-| FilePicker (directory nav, filtering, permissions) | `rouge-components` | |
+| Viewport (scrolling, wrapping, gutter, highlights) | `ruse-components` | Foundation for table/textarea/list |
+| TextInput (cursor, scrolling, suggestions, paste) | `ruse-components` | |
+| TextArea (multiline, line numbers, word ops) | `ruse-components` | Most complex component |
+| Table (columns, rows, selection, viewport scroll) | `ruse-components` | |
+| List (filtering, delegate, pagination, spinner) | `ruse-components` | Most composed component |
+| FilePicker (directory nav, filtering, permissions) | `ruse-components` | |
 
 ### Phase 7: Markdown & Polish (Weeks 15-16)
 
 | Task | Crate | Notes |
 |---|---|---|
-| Markdown parser integration | `rouge-glamour` | pulldown-cmark |
-| AST -> ANSI renderer | `rouge-glamour` | |
-| Syntax highlighting | `rouge-glamour` | syntect |
-| Theme system + builtin themes | `rouge-glamour` | serde JSON deserialization |
-| Facade crate + feature flags | `rouge` | |
+| Markdown parser integration | `ruse-glamour` | pulldown-cmark |
+| AST -> ANSI renderer | `ruse-glamour` | |
+| Syntax highlighting | `ruse-glamour` | syntect |
+| Theme system + builtin themes | `ruse-glamour` | serde JSON deserialization |
+| Facade crate + feature flags | `ruse` | |
 | Examples for each component | all | |
 | Documentation | all | |
 
@@ -1229,7 +1229,7 @@ Matches Go's module boundaries. Users who only need styling don't pay for the ru
 ## Appendix: Example Usage
 
 ```rust
-use rouge::prelude::*;
+use ruse::prelude::*;
 
 struct Counter {
     count: i32,

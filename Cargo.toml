@@ -1,14 +1,14 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/rouge-ansi",
-    "crates/rouge-harmonica",
-    "crates/rouge-colorprofile",
-    "crates/rouge-style",
-    "crates/rouge-runtime",
-    "crates/rouge-components",
-    "crates/rouge-glamour",
-    "crates/rouge",
+    "crates/ruse-ansi",
+    "crates/ruse-harmonica",
+    "crates/ruse-colorprofile",
+    "crates/ruse-style",
+    "crates/ruse-runtime",
+    "crates/ruse-components",
+    "crates/ruse-glamour",
+    "crates/ruse",
 ]
 
 [workspace.package]
@@ -17,14 +17,14 @@ version = "0.1.0"
 license = "MIT"
 
 [workspace.dependencies]
-rouge-ansi = { path = "crates/rouge-ansi" }
-rouge-colorprofile = { path = "crates/rouge-colorprofile" }
-rouge-harmonica = { path = "crates/rouge-harmonica" }
-rouge-style = { path = "crates/rouge-style" }
-rouge-runtime = { path = "crates/rouge-runtime" }
-rouge-components = { path = "crates/rouge-components" }
-rouge-glamour = { path = "crates/rouge-glamour" }
-rouge = { path = "crates/rouge" }
+ruse-ansi = { path = "crates/ruse-ansi" }
+ruse-colorprofile = { path = "crates/ruse-colorprofile" }
+ruse-harmonica = { path = "crates/ruse-harmonica" }
+ruse-style = { path = "crates/ruse-style" }
+ruse-runtime = { path = "crates/ruse-runtime" }
+ruse-components = { path = "crates/ruse-components" }
+ruse-glamour = { path = "crates/ruse-glamour" }
+ruse = { path = "crates/ruse" }
 
 unicode-width = "0.2"
 unicode-segmentation = "1.12"

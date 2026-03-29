@@ -1,6 +1,6 @@
-# Rouge.sh Gap Analysis — charm.sh vs rouge.sh
+# Ruse.sh Gap Analysis — charm.sh vs ruse.sh
 
-Full inventory of every feature in the Go charm.sh ecosystem that is missing or incomplete in the Rust rouge.sh port, with implementation-level detail.
+Full inventory of every feature in the Go charm.sh ecosystem that is missing or incomplete in the Rust ruse.sh port, with implementation-level detail.
 
 **Go**: 118,755 lines across 7 libraries
 **Rust**: 12,447 lines across 8 crates (~10.5% of Go)
@@ -11,18 +11,18 @@ Full inventory of every feature in the Go charm.sh ecosystem that is missing or 
 
 ## Table of Contents
 
-1. [x/ansi vs rouge-ansi](#1-xansi-vs-rouge-ansi)
-2. [bubbletea vs rouge-runtime](#2-bubbletea-vs-rouge-runtime)
-3. [lipgloss vs rouge-style](#3-lipgloss-vs-rouge-style)
-4. [bubbles vs rouge-components](#4-bubbles-vs-rouge-components)
-5. [glamour vs rouge-glamour](#5-glamour-vs-rouge-glamour)
-6. [colorprofile vs rouge-colorprofile](#6-colorprofile-vs-rouge-colorprofile)
-7. [harmonica vs rouge-harmonica](#7-harmonica-vs-rouge-harmonica)
+1. [x/ansi vs ruse-ansi](#1-xansi-vs-ruse-ansi)
+2. [bubbletea vs ruse-runtime](#2-bubbletea-vs-ruse-runtime)
+3. [lipgloss vs ruse-style](#3-lipgloss-vs-ruse-style)
+4. [bubbles vs ruse-components](#4-bubbles-vs-ruse-components)
+5. [glamour vs ruse-glamour](#5-glamour-vs-ruse-glamour)
+6. [colorprofile vs ruse-colorprofile](#6-colorprofile-vs-ruse-colorprofile)
+7. [harmonica vs ruse-harmonica](#7-harmonica-vs-ruse-harmonica)
 8. [Implementation Plan](#8-implementation-plan)
 
 ---
 
-## 1. x/ansi vs rouge-ansi
+## 1. x/ansi vs ruse-ansi
 
 **Go**: 68,458 lines (25 packages) | **Rust**: 1,210 lines (6 modules) | **Coverage**: ~2%
 
@@ -30,7 +30,7 @@ Most of Go's x/ is replaced by `crossterm` in Rust, but significant gaps remain.
 
 ### 1.1 Cell Buffer System (`x/cellbuf/`) — NOT IMPLEMENTED
 
-**Priority**: P0 | **Effort**: ~2,500 lines | **Depends on**: rouge-ansi SGR, rouge-colorprofile
+**Priority**: P0 | **Effort**: ~2,500 lines | **Depends on**: ruse-ansi SGR, ruse-colorprofile
 
 The foundation for diff-based rendering. Go has ~5,089 lines across 13 files.
 
@@ -292,7 +292,7 @@ XTerm 256 default palette, custom palette loading, OSC 4 set/query.
 
 ---
 
-## 2. bubbletea vs rouge-runtime
+## 2. bubbletea vs ruse-runtime
 
 **Go**: 13,839 lines | **Rust**: 940 lines | **Coverage**: ~7%
 
@@ -461,7 +461,7 @@ let result = std::panic::catch_unwind(AssertUnwindSafe(|| { ... }));
 // 1. Restore terminal (disable raw, leave alt screen, show cursor)
 // 2. Format panic with \r\n for raw mode readability
 // 3. Print to stderr
-// 4. If TEA_DEBUG=1: write rouge-panic-{unix_ts}.log
+// 4. If TEA_DEBUG=1: write ruse-panic-{unix_ts}.log
 // 5. Return Err(ProgramError::Panic(msg))
 ```
 
@@ -560,7 +560,7 @@ Terminal query commands that send escape sequences and receive responses through
 
 ---
 
-## 3. lipgloss vs rouge-style
+## 3. lipgloss vs ruse-style
 
 **Go**: 15,442 lines | **Rust**: 2,822 lines | **Coverage**: ~18%
 
@@ -877,7 +877,7 @@ Custom fill characters (default NBSP for copy-paste preservation).
 
 ---
 
-## 4. bubbles vs rouge-components
+## 4. bubbles vs ruse-components
 
 **Go**: 13,792 lines | **Rust**: 3,037 lines | **Coverage**: ~22%
 
@@ -1335,7 +1335,7 @@ Add: Jump, Points, Monkey, Meter, Hamburger.
 
 ---
 
-## 5. glamour vs rouge-glamour
+## 5. glamour vs ruse-glamour
 
 **Go**: 4,799 lines | **Rust**: 1,487 lines | **Coverage**: ~31%
 
@@ -1500,7 +1500,7 @@ Need element handlers for: `DefinitionList`, `DefinitionTerm`, `DefinitionDescri
 
 ---
 
-## 6. colorprofile vs rouge-colorprofile
+## 6. colorprofile vs ruse-colorprofile
 
 **Go**: 1,441 lines | **Rust**: 1,631 lines | **Coverage**: ~113%
 
@@ -1555,7 +1555,7 @@ Thread-safe cache for color conversions using `RwLock<HashMap<Color, Color>>`.
 
 ---
 
-## 7. harmonica vs rouge-harmonica
+## 7. harmonica vs ruse-harmonica
 
 **Go**: 984 lines | **Rust**: 620 lines | **Coverage**: ~63%
 
@@ -1573,15 +1573,15 @@ Foundation work that unblocks everything else.
 
 | Task | Library | Effort | Depends On |
 |---|---|---|---|
-| 1.1 Cell buffer (Cell, CellStyle, Link, Buffer) | rouge-ansi | ~600 lines | — |
-| 1.1.5 Screen (double-buffer, diff, cursor opt) | rouge-ansi | ~900 lines | 1.1 |
-| 2.1 Integrate cellbuf renderer into Program | rouge-runtime | ~800 lines | 1.1.5 |
-| 2.9 Panic recovery | rouge-runtime | ~100 lines | — |
-| 2.2 Exec/ExecProcess | rouge-runtime | ~200 lines | — |
-| 2.3 Suspend/Resume (SIGTSTP/SIGCONT) | rouge-runtime | ~100 lines | — |
-| 2.4 Send() / ProgramHandle | rouge-runtime | ~50 lines | — |
-| 2.6 WithInput/WithOutput/WithEnvironment | rouge-runtime | ~200 lines | — |
-| 4.1 KeyMap system (all components) | rouge-components | ~300 lines | — |
+| 1.1 Cell buffer (Cell, CellStyle, Link, Buffer) | ruse-ansi | ~600 lines | — |
+| 1.1.5 Screen (double-buffer, diff, cursor opt) | ruse-ansi | ~900 lines | 1.1 |
+| 2.1 Integrate cellbuf renderer into Program | ruse-runtime | ~800 lines | 1.1.5 |
+| 2.9 Panic recovery | ruse-runtime | ~100 lines | — |
+| 2.2 Exec/ExecProcess | ruse-runtime | ~200 lines | — |
+| 2.3 Suspend/Resume (SIGTSTP/SIGCONT) | ruse-runtime | ~100 lines | — |
+| 2.4 Send() / ProgramHandle | ruse-runtime | ~50 lines | — |
+| 2.6 WithInput/WithOutput/WithEnvironment | ruse-runtime | ~200 lines | — |
+| 4.1 KeyMap system (all components) | ruse-components | ~300 lines | — |
 
 **Estimated**: ~3,250 lines | **Verification**: `cargo test --workspace`, all 5 examples run flicker-free
 
@@ -1591,25 +1591,25 @@ Features needed for production use.
 
 | Task | Library | Effort | Depends On |
 |---|---|---|---|
-| 1.7 Grapheme cluster handling | rouge-ansi | ~200 lines | — |
-| 2.5 Kill/Wait/Quit | rouge-runtime | ~50 lines | Phase 1 |
-| 2.7 WithFilter | rouge-runtime | ~30 lines | Phase 1 |
-| 2.8 WithContext | rouge-runtime | ~30 lines | Phase 1 |
-| 3.3 Underline styles (curly, dotted, dashed) | rouge-style | ~80 lines | — |
-| 3.4 StyleRunes / StyleRanges | rouge-style | ~150 lines | — |
-| 3.10 Table advanced (Data, column resize, wrapping) | rouge-style | ~400 lines | — |
-| 3.11 Getter/Unset methods (39+) | rouge-style | ~300 lines | — |
-| 4.2 Focused/Blurred style states | rouge-components | ~200 lines | — |
-| 4.3 TextInput suggestions | rouge-components | ~200 lines | — |
-| 4.4-4.5 TextInput word nav + scrolling | rouge-components | ~160 lines | — |
-| 4.8 TextArea soft wrapping + memo | rouge-components | ~300 lines | — |
-| 4.11 Viewport gutter | rouge-components | ~80 lines | — |
-| 4.12 Viewport highlights | rouge-components | ~200 lines | 3.4 |
-| 4.16-4.17 List ItemDelegate + fuzzy | rouge-components | ~300 lines | 3.4 |
-| 5.1-5.3 Glamour element arch + block stack + cascade | rouge-glamour | ~630 lines | — |
-| 5.4 Glamour table rendering | rouge-glamour | ~200 lines | 5.1 |
-| 5.6 Glamour list nesting | rouge-glamour | ~60 lines | 5.2 |
-| 6.4 Color conversion cache | rouge-colorprofile | ~40 lines | — |
+| 1.7 Grapheme cluster handling | ruse-ansi | ~200 lines | — |
+| 2.5 Kill/Wait/Quit | ruse-runtime | ~50 lines | Phase 1 |
+| 2.7 WithFilter | ruse-runtime | ~30 lines | Phase 1 |
+| 2.8 WithContext | ruse-runtime | ~30 lines | Phase 1 |
+| 3.3 Underline styles (curly, dotted, dashed) | ruse-style | ~80 lines | — |
+| 3.4 StyleRunes / StyleRanges | ruse-style | ~150 lines | — |
+| 3.10 Table advanced (Data, column resize, wrapping) | ruse-style | ~400 lines | — |
+| 3.11 Getter/Unset methods (39+) | ruse-style | ~300 lines | — |
+| 4.2 Focused/Blurred style states | ruse-components | ~200 lines | — |
+| 4.3 TextInput suggestions | ruse-components | ~200 lines | — |
+| 4.4-4.5 TextInput word nav + scrolling | ruse-components | ~160 lines | — |
+| 4.8 TextArea soft wrapping + memo | ruse-components | ~300 lines | — |
+| 4.11 Viewport gutter | ruse-components | ~80 lines | — |
+| 4.12 Viewport highlights | ruse-components | ~200 lines | 3.4 |
+| 4.16-4.17 List ItemDelegate + fuzzy | ruse-components | ~300 lines | 3.4 |
+| 5.1-5.3 Glamour element arch + block stack + cascade | ruse-glamour | ~630 lines | — |
+| 5.4 Glamour table rendering | ruse-glamour | ~200 lines | 5.1 |
+| 5.6 Glamour list nesting | ruse-glamour | ~60 lines | 5.2 |
+| 6.4 Color conversion cache | ruse-colorprofile | ~40 lines | — |
 
 **Estimated**: ~3,610 lines | **Verification**: `cargo test --workspace`, fuzzy filtering works, glamour renders tables
 
@@ -1619,19 +1619,19 @@ Quality-of-life improvements and advanced features.
 
 | Task | Library | Effort | Depends On |
 |---|---|---|---|
-| 1.2 ANSI parser state machine | rouge-ansi | ~800 lines | — |
-| 1.5 OSC sequence handlers | rouge-ansi | ~300 lines | — |
-| 1.6 Advanced SGR | rouge-ansi | ~100 lines | — |
-| 1.8 Terminal queries | rouge-ansi | ~100 lines | — |
-| 2.10-2.17 Runtime extras (Every, deferred init, println, clipboard, raw, logging, queries, tty fallback) | rouge-runtime | ~360 lines | Phase 1 |
-| 3.1 Layer/Compositor/Canvas | rouge-style | ~800 lines | Phase 1 (cellbuf) |
-| 3.2 Tree/List rendering | rouge-style | ~600 lines | — |
-| 3.5-3.16 Style extras (whitespace, hyperlinks, LightDark, Blend2D, border blend, transform, SetString, colors, padding/margin chars) | rouge-style | ~450 lines | — |
-| 4.6-4.10 TextInput validate + TextArea extras | rouge-components | ~220 lines | — |
-| 4.13-4.15 Viewport extras (StyleLineFunc, horizontal scroll, half-page) | rouge-components | ~110 lines | — |
-| 4.18-4.26 Component extras (FilterState, status msgs, table/help/filepicker/progress enhancements) | rouge-components | ~420 lines | — |
-| 5.5-5.12 Glamour extras (footnotes, checkboxes, strikethrough, images, gutter, themes, env) | rouge-glamour | ~300 lines | Phase 2 |
-| 6.1-6.2 Colorprofile terminfo + tmux | rouge-colorprofile | ~70 lines | — |
+| 1.2 ANSI parser state machine | ruse-ansi | ~800 lines | — |
+| 1.5 OSC sequence handlers | ruse-ansi | ~300 lines | — |
+| 1.6 Advanced SGR | ruse-ansi | ~100 lines | — |
+| 1.8 Terminal queries | ruse-ansi | ~100 lines | — |
+| 2.10-2.17 Runtime extras (Every, deferred init, println, clipboard, raw, logging, queries, tty fallback) | ruse-runtime | ~360 lines | Phase 1 |
+| 3.1 Layer/Compositor/Canvas | ruse-style | ~800 lines | Phase 1 (cellbuf) |
+| 3.2 Tree/List rendering | ruse-style | ~600 lines | — |
+| 3.5-3.16 Style extras (whitespace, hyperlinks, LightDark, Blend2D, border blend, transform, SetString, colors, padding/margin chars) | ruse-style | ~450 lines | — |
+| 4.6-4.10 TextInput validate + TextArea extras | ruse-components | ~220 lines | — |
+| 4.13-4.15 Viewport extras (StyleLineFunc, horizontal scroll, half-page) | ruse-components | ~110 lines | — |
+| 4.18-4.26 Component extras (FilterState, status msgs, table/help/filepicker/progress enhancements) | ruse-components | ~420 lines | — |
+| 5.5-5.12 Glamour extras (footnotes, checkboxes, strikethrough, images, gutter, themes, env) | ruse-glamour | ~300 lines | Phase 2 |
+| 6.1-6.2 Colorprofile terminfo + tmux | ruse-colorprofile | ~70 lines | — |
 
 **Estimated**: ~4,630 lines | **Verification**: `cargo test --workspace`, all examples run, glamour renders all markdown elements
 
@@ -1641,12 +1641,12 @@ Rarely-needed features for completeness.
 
 | Task | Library | Effort | Depends On |
 |---|---|---|---|
-| 1.3 Virtual terminal emulator | rouge-ansi | ~2,000 lines | Phase 1 (cellbuf), Phase 3 (parser) |
-| 1.4 Kitty graphics protocol | rouge-ansi | ~400 lines | — |
-| 1.9 Color palette management | rouge-ansi | ~150 lines | — |
-| 4.27 Missing spinner presets | rouge-components | ~20 lines | — |
-| 5.13 Glamour definition lists + footnotes + emoji | rouge-glamour | ~100 lines | Phase 2 (element arch) |
-| 6.3 Windows version detection | rouge-colorprofile | ~40 lines | — |
+| 1.3 Virtual terminal emulator | ruse-ansi | ~2,000 lines | Phase 1 (cellbuf), Phase 3 (parser) |
+| 1.4 Kitty graphics protocol | ruse-ansi | ~400 lines | — |
+| 1.9 Color palette management | ruse-ansi | ~150 lines | — |
+| 4.27 Missing spinner presets | ruse-components | ~20 lines | — |
+| 5.13 Glamour definition lists + footnotes + emoji | ruse-glamour | ~100 lines | Phase 2 (element arch) |
+| 6.3 Windows version detection | ruse-colorprofile | ~40 lines | — |
 
 **Estimated**: ~2,710 lines
 

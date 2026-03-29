@@ -1,0 +1,19 @@
+[package]
+name = "ruse-runtime"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+ruse-ansi.workspace = true
+ruse-colorprofile.workspace = true
+ruse-style.workspace = true
+crossterm.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+thiserror.workspace = true
+futures.workspace = true
+bitflags.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+nix.workspace = true

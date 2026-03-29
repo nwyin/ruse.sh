@@ -1,12 +1,12 @@
-# Rouge.sh Implementation Spec
+# Ruse.sh Implementation Spec
 
 ## Requirements
 
-- Full port of all 8 crates: rouge-ansi, rouge-colorprofile, rouge-harmonica, rouge-style, rouge-runtime, rouge-components (all 14), rouge-glamour, rouge facade
+- Full port of all 8 crates: ruse-ansi, ruse-colorprofile, ruse-harmonica, ruse-style, ruse-runtime, ruse-components (all 14), ruse-glamour, ruse facade
 - Rust 2024 edition, latest stable, no MSRV constraint
 - Tokio-only async runtime (no sync/blocking mode)
 - Unix-first (macOS/Linux). Windows may compile via crossterm but not a target
-- Both static table (lipgloss port in rouge-style) and interactive table (bubbles port in rouge-components)
+- Both static table (lipgloss port in ruse-style) and interactive table (bubbles port in ruse-components)
 - Port Go JSON theme files for glamour (dracula, tokyo-night, dark, light) via serde
 - Parallel agent implementation for independent crates
 
@@ -33,18 +33,18 @@
 
 ### Requirements
 
-- **rouge-ansi**: SgrStyle builder (bold/italic/colors/etc -> ESC sequences), string_width (ANSI-aware), strip, truncate, wrap, height. Uses unicode-width + unicode-segmentation.
-- **rouge-harmonica**: Spring (damped harmonic oscillator with 3 damping branches), Projectile (3D point/vector physics), fps() helper. Zero dependencies, pure math.
-- **rouge-colorprofile**: Profile enum (NoTty/Ascii/Ansi/Ansi256/TrueColor) with Ord, detect() from env vars + TERM + COLORTERM + NO_COLOR, convert() for color downsampling, Writer for transparent SGR rewriting. Depends on rouge-ansi.
+- **ruse-ansi**: SgrStyle builder (bold/italic/colors/etc -> ESC sequences), string_width (ANSI-aware), strip, truncate, wrap, height. Uses unicode-width + unicode-segmentation.
+- **ruse-harmonica**: Spring (damped harmonic oscillator with 3 damping branches), Projectile (3D point/vector physics), fps() helper. Zero dependencies, pure math.
+- **ruse-colorprofile**: Profile enum (NoTty/Ascii/Ansi/Ansi256/TrueColor) with Ord, detect() from env vars + TERM + COLORTERM + NO_COLOR, convert() for color downsampling, Writer for transparent SGR rewriting. Depends on ruse-ansi.
 
 ### Success Criteria
 
-- `cargo build -p rouge-ansi -p rouge-harmonica -p rouge-colorprofile`
+- `cargo build -p ruse-ansi -p ruse-harmonica -p ruse-colorprofile`
 - Unit tests for: SGR generation, string_width with ANSI codes, strip, wrap, spring math (all 3 damping modes), profile detection from env vars, color conversion
 
 ---
 
-## Spec 2: Styling & Layout (rouge-style)
+## Spec 2: Styling & Layout (ruse-style)
 
 ### Prerequisites: Spec 1
 
@@ -59,12 +59,12 @@
 
 ### Success Criteria
 
-- `cargo build -p rouge-style`
+- `cargo build -p ruse-style`
 - Unit tests for: color parsing, style rendering, border rendering, layout join/place, table rendering
 
 ---
 
-## Spec 3: Runtime (rouge-runtime)
+## Spec 3: Runtime (ruse-runtime)
 
 ### Prerequisites: Spec 1, Spec 2
 
@@ -84,12 +84,12 @@
 
 ### Success Criteria
 
-- `cargo build -p rouge-runtime`
+- `cargo build -p ruse-runtime`
 - Counter example runs: displays count, j/k changes it, q quits, alt screen works
 
 ---
 
-## Spec 4: Components (rouge-components)
+## Spec 4: Components (ruse-components)
 
 ### Prerequisites: Spec 3
 
@@ -103,7 +103,7 @@ All 14 components with new(), update(&mut self, msg), view(&self) -> String:
 - **Paginator**: Arabic + Dots modes, pagination math
 - **Timer**: countdown with interval, Start/Stop/Toggle, TimeoutMsg
 - **Stopwatch**: elapsed time, Start/Stop/Toggle/Reset
-- **Progress**: fill/empty chars, color gradients, spring animation (rouge-harmonica), percentage display
+- **Progress**: fill/empty chars, color gradients, spring animation (ruse-harmonica), percentage display
 - **Help**: short + full help views, takes &dyn KeyMap
 - **Viewport**: scrolling, soft wrap, mouse wheel, gutter func, highlights, per-line styling
 - **TextInput**: cursor, scrolling, echo modes (Normal/Password/None), suggestions, paste, validation
@@ -116,7 +116,7 @@ Feature-gated in facade crate.
 
 ### Success Criteria
 
-- `cargo build -p rouge-components`
+- `cargo build -p ruse-components`
 - Spinner, textinput, list, table, viewport examples run interactively
 
 ---
@@ -127,8 +127,8 @@ Feature-gated in facade crate.
 
 ### Requirements
 
-- **rouge-glamour**: TermRenderer with pulldown-cmark parser, syntect syntax highlighting, serde StyleConfig, 4 embedded themes (dracula, tokyo-night, dark, light), render() convenience function
-- **rouge facade crate**: re-exports all crates, feature flags per component
+- **ruse-glamour**: TermRenderer with pulldown-cmark parser, syntect syntax highlighting, serde StyleConfig, 4 embedded themes (dracula, tokyo-night, dark, light), render() convenience function
+- **ruse facade crate**: re-exports all crates, feature flags per component
 - **Examples** (ported from bubbletea canonical examples):
   - counter: keyboard-driven counter with styled view
   - todo: list with filtering, add/remove items

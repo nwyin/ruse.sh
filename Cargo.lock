@@ -600,21 +600,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
-name = "rouge"
+name = "ruse"
 version = "0.1.0"
 dependencies = [
- "rouge-ansi",
- "rouge-colorprofile",
- "rouge-components",
- "rouge-glamour",
- "rouge-harmonica",
- "rouge-runtime",
- "rouge-style",
+ "ruse-ansi",
+ "ruse-colorprofile",
+ "ruse-components",
+ "ruse-glamour",
+ "ruse-harmonica",
+ "ruse-runtime",
+ "ruse-style",
  "tokio",
 ]
 
 [[package]]
-name = "rouge-ansi"
+name = "ruse-ansi"
 version = "0.1.0"
 dependencies = [
  "unicode-segmentation",
@@ -622,65 +622,65 @@ dependencies = [
 ]
 
 [[package]]
-name = "rouge-colorprofile"
+name = "ruse-colorprofile"
 version = "0.1.0"
 dependencies = [
- "rouge-ansi",
+ "ruse-ansi",
 ]
 
 [[package]]
-name = "rouge-components"
+name = "ruse-components"
 version = "0.1.0"
 dependencies = [
  "crossterm",
- "rouge-ansi",
- "rouge-harmonica",
- "rouge-runtime",
- "rouge-style",
+ "ruse-ansi",
+ "ruse-harmonica",
+ "ruse-runtime",
+ "ruse-style",
  "unicode-segmentation",
  "unicode-width",
 ]
 
 [[package]]
-name = "rouge-glamour"
+name = "ruse-glamour"
 version = "0.1.0"
 dependencies = [
  "pulldown-cmark",
- "rouge-ansi",
- "rouge-style",
+ "ruse-ansi",
+ "ruse-style",
  "serde",
  "serde_json",
  "syntect",
 ]
 
 [[package]]
-name = "rouge-harmonica"
+name = "ruse-harmonica"
 version = "0.1.0"
 
 [[package]]
-name = "rouge-runtime"
+name = "ruse-runtime"
 version = "0.1.0"
 dependencies = [
  "bitflags",
  "crossterm",
  "futures",
  "nix",
- "rouge-ansi",
- "rouge-colorprofile",
- "rouge-style",
+ "ruse-ansi",
+ "ruse-colorprofile",
+ "ruse-style",
  "thiserror",
  "tokio",
  "tokio-util",
 ]
 
 [[package]]
-name = "rouge-style"
+name = "ruse-style"
 version = "0.1.0"
 dependencies = [
  "bitflags",
  "palette",
- "rouge-ansi",
- "rouge-colorprofile",
+ "ruse-ansi",
+ "ruse-colorprofile",
  "unicode-width",
 ]
 

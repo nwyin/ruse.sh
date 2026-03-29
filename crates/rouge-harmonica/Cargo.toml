@@ -1,7 +1,0 @@
-[package]
-name = "rouge-harmonica"
-edition.workspace = true
-version.workspace = true
-license.workspace = true
-
-[dependencies]
