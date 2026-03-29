@@ -1,8 +1,31 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use rouge_runtime::{Cmd, KeyCode, Msg};
+use rouge_runtime::{Cmd, Msg};
 use rouge_style::Style;
+
+use crate::key::Binding;
+
+/// Key bindings for the FilePicker component.
+pub struct FilePickerKeyMap {
+    pub up: Binding,
+    pub down: Binding,
+    pub open: Binding,
+    pub back: Binding,
+    pub toggle_hidden: Binding,
+}
+
+impl Default for FilePickerKeyMap {
+    fn default() -> Self {
+        Self {
+            up: Binding::new(&["up", "k"], "↑/k", "up"),
+            down: Binding::new(&["down", "j"], "↓/j", "down"),
+            open: Binding::new(&["right", "enter", "l"], "→/enter", "open"),
+            back: Binding::new(&["left", "backspace", "h"], "←/bksp", "back"),
+            toggle_hidden: Binding::new(&["."], ".", "toggle hidden"),
+        }
+    }
+}
 
 static FILEPICKER_ID: AtomicUsize = AtomicUsize::new(0);
 
@@ -44,6 +67,7 @@ impl Default for FilePickerStyles {
 }
 
 pub struct FilePicker {
+    pub key_map: FilePickerKeyMap,
     current_dir: PathBuf,
     entries: Vec<DirEntry>,
     cursor: usize,
@@ -65,6 +89,7 @@ impl FilePicker {
     pub fn new() -> Self {
         let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         Self {
+            key_map: FilePickerKeyMap::default(),
             current_dir,
             entries: Vec::new(),
             cursor: 0,
@@ -123,20 +148,18 @@ impl FilePicker {
             return None;
         }
 
-        if let Msg::KeyPress(key) = msg { match key.code {
-            KeyCode::Up | KeyCode::Char('k') => {
+        if let Msg::KeyPress(key) = msg {
+            if self.key_map.up.matches(key) {
                 if self.cursor > 0 {
                     self.cursor -= 1;
                     self.ensure_cursor_visible();
                 }
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
+            } else if self.key_map.down.matches(key) {
                 if self.cursor < self.entries.len().saturating_sub(1) {
                     self.cursor += 1;
                     self.ensure_cursor_visible();
                 }
-            }
-            KeyCode::Enter => {
+            } else if self.key_map.open.matches(key) {
                 if let Some(entry) = self.entries.get(self.cursor) {
                     if entry.is_dir {
                         self.current_dir = entry.path.clone();
@@ -145,37 +168,16 @@ impl FilePicker {
                         self.selected = Some(entry.path.clone());
                     }
                 }
-            }
-            KeyCode::Backspace => {
+            } else if self.key_map.back.matches(key) {
                 if let Some(parent) = self.current_dir.parent() {
                     self.current_dir = parent.to_path_buf();
                     return self.read_dir_cmd();
                 }
-            }
-            KeyCode::PageUp => {
-                self.cursor = self.cursor.saturating_sub(self.height);
-                self.ensure_cursor_visible();
-            }
-            KeyCode::PageDown => {
-                self.cursor = (self.cursor + self.height).min(self.entries.len().saturating_sub(1));
-                self.ensure_cursor_visible();
-            }
-            KeyCode::Home => {
-                self.cursor = 0;
-                self.y_offset = 0;
-            }
-            KeyCode::End => {
-                if !self.entries.is_empty() {
-                    self.cursor = self.entries.len() - 1;
-                    self.ensure_cursor_visible();
-                }
-            }
-            KeyCode::Char('.') => {
+            } else if self.key_map.toggle_hidden.matches(key) {
                 self.show_hidden = !self.show_hidden;
                 return self.read_dir_cmd();
             }
-            _ => {}
-        } }
+        }
         None
     }
 

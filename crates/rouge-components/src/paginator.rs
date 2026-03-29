@@ -1,5 +1,22 @@
 use rouge_runtime::{Cmd, Msg};
 
+use crate::key::Binding;
+
+/// Key bindings for the Paginator component.
+pub struct PaginatorKeyMap {
+    pub prev_page: Binding,
+    pub next_page: Binding,
+}
+
+impl Default for PaginatorKeyMap {
+    fn default() -> Self {
+        Self {
+            prev_page: Binding::new(&["left", "h", "pgup"], "←/h", "prev page"),
+            next_page: Binding::new(&["right", "l", "pgdn"], "→/l", "next page"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum PaginatorType {
     Arabic,
@@ -7,6 +24,7 @@ pub enum PaginatorType {
 }
 
 pub struct Paginator {
+    pub key_map: PaginatorKeyMap,
     pub page: usize,
     pub per_page: usize,
     pub total_pages: usize,
@@ -24,6 +42,7 @@ impl Default for Paginator {
 impl Paginator {
     pub fn new() -> Self {
         Self {
+            key_map: PaginatorKeyMap::default(),
             page: 0,
             per_page: 1,
             total_pages: 1,
@@ -90,9 +109,14 @@ impl Paginator {
         self.page >= self.total_pages.saturating_sub(1)
     }
 
-    pub fn update(&mut self, _msg: &Msg) -> Cmd {
-        // Paginator doesn't handle messages by itself;
-        // it's driven by the containing component.
+    pub fn update(&mut self, msg: &Msg) -> Cmd {
+        if let Msg::KeyPress(key) = msg {
+            if self.key_map.prev_page.matches(key) {
+                self.prev_page();
+            } else if self.key_map.next_page.matches(key) {
+                self.next_page();
+            }
+        }
         None
     }
 

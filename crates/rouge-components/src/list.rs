@@ -1,7 +1,33 @@
 use rouge_runtime::{Cmd, KeyCode, Msg};
 use rouge_style::Style;
 
+use crate::key::Binding;
 use crate::textinput::TextInput;
+
+/// Key bindings for the List component.
+pub struct ListKeyMap {
+    pub cursor_up: Binding,
+    pub cursor_down: Binding,
+    pub page_up: Binding,
+    pub page_down: Binding,
+    pub goto_top: Binding,
+    pub goto_bottom: Binding,
+    pub filter: Binding,
+}
+
+impl Default for ListKeyMap {
+    fn default() -> Self {
+        Self {
+            cursor_up: Binding::new(&["up", "k"], "↑/k", "up"),
+            cursor_down: Binding::new(&["down", "j"], "↓/j", "down"),
+            page_up: Binding::new(&["pgup"], "pgup", "page up"),
+            page_down: Binding::new(&["pgdn"], "pgdn", "page down"),
+            goto_top: Binding::new(&["home", "g"], "g/home", "go to start"),
+            goto_bottom: Binding::new(&["end", "G"], "G/end", "go to end"),
+            filter: Binding::new(&["/"], "/", "filter"),
+        }
+    }
+}
 
 /// Trait for items that can be displayed in a list.
 pub trait ListItem: Send {
@@ -64,6 +90,7 @@ impl Default for ListStyles {
 }
 
 pub struct List {
+    pub key_map: ListKeyMap,
     items: Vec<Box<dyn ListItem>>,
     filtered_indices: Vec<usize>,
     cursor: usize,
@@ -85,6 +112,7 @@ impl List {
         let count = items.len();
         let indices: Vec<usize> = (0..count).collect();
         Self {
+            key_map: ListKeyMap::default(),
             items,
             filtered_indices: indices,
             cursor: 0,
@@ -143,39 +171,30 @@ impl List {
         }
 
         if let Msg::KeyPress(key) = msg {
-            match key.code {
-                KeyCode::Up | KeyCode::Char('k') => {
+            if self.key_map.cursor_up.matches(key) {
+                self.cursor_up();
+            } else if self.key_map.cursor_down.matches(key) {
+                self.cursor_down();
+            } else if self.key_map.page_up.matches(key) {
+                for _ in 0..self.visible_item_count() {
                     self.cursor_up();
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
+            } else if self.key_map.page_down.matches(key) {
+                for _ in 0..self.visible_item_count() {
                     self.cursor_down();
                 }
-                KeyCode::PageUp => {
-                    for _ in 0..self.visible_item_count() {
-                        self.cursor_up();
-                    }
+            } else if self.key_map.goto_top.matches(key) {
+                self.cursor = 0;
+                self.y_offset = 0;
+            } else if self.key_map.goto_bottom.matches(key) {
+                if !self.filtered_indices.is_empty() {
+                    self.cursor = self.filtered_indices.len() - 1;
+                    self.ensure_cursor_visible();
                 }
-                KeyCode::PageDown => {
-                    for _ in 0..self.visible_item_count() {
-                        self.cursor_down();
-                    }
-                }
-                KeyCode::Home | KeyCode::Char('g') => {
-                    self.cursor = 0;
-                    self.y_offset = 0;
-                }
-                KeyCode::End | KeyCode::Char('G') => {
-                    if !self.filtered_indices.is_empty() {
-                        self.cursor = self.filtered_indices.len() - 1;
-                        self.ensure_cursor_visible();
-                    }
-                }
-                KeyCode::Char('/') if self.show_filter => {
-                    self.filtering = true;
-                    self.filter_input.set_value(&self.filter_text);
-                    return self.filter_input.focus();
-                }
-                _ => {}
+            } else if self.show_filter && self.key_map.filter.matches(key) {
+                self.filtering = true;
+                self.filter_input.set_value(&self.filter_text);
+                return self.filter_input.focus();
             }
         }
         None

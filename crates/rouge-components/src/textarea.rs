@@ -1,7 +1,57 @@
 use rouge_runtime::{Cmd, KeyCode, Modifiers, Msg};
 use rouge_style::Style;
 
+use crate::key::Binding;
+
+/// Key bindings for the TextArea component.
+pub struct TextAreaKeyMap {
+    pub char_forward: Binding,
+    pub char_backward: Binding,
+    pub word_forward: Binding,
+    pub word_backward: Binding,
+    pub char_up: Binding,
+    pub char_down: Binding,
+    pub delete_char_backward: Binding,
+    pub delete_char_forward: Binding,
+    pub delete_word_backward: Binding,
+    pub line_start: Binding,
+    pub line_end: Binding,
+    pub delete_line: Binding,
+    pub insert_newline: Binding,
+    pub delete_before_cursor: Binding,
+    pub page_up: Binding,
+    pub page_down: Binding,
+    pub goto_top: Binding,
+    pub goto_bottom: Binding,
+}
+
+impl Default for TextAreaKeyMap {
+    fn default() -> Self {
+        Self {
+            char_forward: Binding::new(&["right", "ctrl+f"], "→", "forward"),
+            char_backward: Binding::new(&["left", "ctrl+b"], "←", "backward"),
+            word_forward: Binding::new(&["alt+right", "ctrl+right", "alt+f"], "alt+→", "word forward"),
+            word_backward: Binding::new(&["alt+left", "ctrl+left", "alt+b"], "alt+←", "word backward"),
+            char_up: Binding::new(&["up"], "↑", "up"),
+            char_down: Binding::new(&["down"], "↓", "down"),
+            delete_char_backward: Binding::new(&["backspace"], "bksp", "delete char"),
+            delete_char_forward: Binding::new(&["delete"], "del", "delete char forward"),
+            delete_word_backward: Binding::new(&["ctrl+w"], "ctrl+w", "delete word"),
+            line_start: Binding::new(&["home", "ctrl+a"], "home", "line start"),
+            line_end: Binding::new(&["end", "ctrl+e"], "end", "line end"),
+            delete_line: Binding::new(&["ctrl+k"], "ctrl+k", "delete line"),
+            insert_newline: Binding::new(&["enter"], "enter", "new line"),
+            delete_before_cursor: Binding::new(&["ctrl+u"], "ctrl+u", "delete to start"),
+            page_up: Binding::new(&["pgup"], "pgup", "page up"),
+            page_down: Binding::new(&["pgdn"], "pgdn", "page down"),
+            goto_top: Binding::new(&["ctrl+home"], "ctrl+home", "go to start"),
+            goto_bottom: Binding::new(&["ctrl+end"], "ctrl+end", "go to end"),
+        }
+    }
+}
+
 pub struct TextArea {
+    pub key_map: TextAreaKeyMap,
     lines: Vec<Vec<char>>,
     cursor_row: usize,
     cursor_col: usize,
@@ -25,6 +75,7 @@ impl Default for TextArea {
 impl TextArea {
     pub fn new() -> Self {
         Self {
+            key_map: TextAreaKeyMap::default(),
             lines: vec![Vec::new()],
             cursor_row: 0,
             cursor_col: 0,
@@ -93,55 +144,58 @@ impl TextArea {
         }
 
         if let Msg::KeyPress(key) = msg {
-            let ctrl = key.modifiers.contains(Modifiers::CTRL);
-            match key.code {
-                KeyCode::Char(ch) if !ctrl => {
-                    self.insert_char(ch);
-                }
-                KeyCode::Enter => {
-                    self.insert_newline();
-                }
-                KeyCode::Backspace => {
-                    self.delete_before_cursor();
-                }
-                KeyCode::Delete => {
-                    self.delete_after_cursor();
-                }
-                KeyCode::Left => {
-                    self.cursor_left();
-                }
-                KeyCode::Right => {
-                    self.cursor_right();
-                }
-                KeyCode::Up => {
+            if self.key_map.insert_newline.matches(key) {
+                self.insert_newline();
+            } else if self.key_map.delete_char_backward.matches(key) {
+                self.delete_before_cursor();
+            } else if self.key_map.delete_char_forward.matches(key) {
+                self.delete_after_cursor();
+            } else if self.key_map.delete_word_backward.matches(key) {
+                self.delete_word_before_cursor();
+            } else if self.key_map.delete_before_cursor.matches(key) {
+                self.delete_to_line_start();
+            } else if self.key_map.delete_line.matches(key) {
+                self.delete_to_line_end();
+            } else if self.key_map.word_forward.matches(key) {
+                self.cursor_word_right();
+            } else if self.key_map.word_backward.matches(key) {
+                self.cursor_word_left();
+            } else if self.key_map.char_backward.matches(key) {
+                self.cursor_left();
+            } else if self.key_map.char_forward.matches(key) {
+                self.cursor_right();
+            } else if self.key_map.char_up.matches(key) {
+                self.cursor_up();
+            } else if self.key_map.char_down.matches(key) {
+                self.cursor_down();
+            } else if self.key_map.line_start.matches(key) {
+                self.cursor_col = 0;
+            } else if self.key_map.line_end.matches(key) {
+                self.cursor_col = self.current_line_len();
+            } else if self.key_map.page_up.matches(key) {
+                for _ in 0..self.height {
                     self.cursor_up();
                 }
-                KeyCode::Down => {
+            } else if self.key_map.page_down.matches(key) {
+                for _ in 0..self.height {
                     self.cursor_down();
                 }
-                KeyCode::Home => {
-                    self.cursor_col = 0;
+            } else if self.key_map.goto_top.matches(key) {
+                self.cursor_row = 0;
+                self.cursor_col = 0;
+            } else if self.key_map.goto_bottom.matches(key) {
+                self.cursor_row = self.lines.len().saturating_sub(1);
+                self.cursor_col = self.current_line_len();
+            } else if key.code == KeyCode::Tab {
+                // Insert 4 spaces
+                for _ in 0..4 {
+                    self.insert_char(' ');
                 }
-                KeyCode::End => {
-                    self.cursor_col = self.current_line_len();
+            } else if let KeyCode::Char(ch) = key.code {
+                // Insert normal characters (no ctrl/alt modifiers)
+                if !key.modifiers.contains(Modifiers::CTRL) && !key.modifiers.contains(Modifiers::ALT) {
+                    self.insert_char(ch);
                 }
-                KeyCode::PageUp => {
-                    for _ in 0..self.height {
-                        self.cursor_up();
-                    }
-                }
-                KeyCode::PageDown => {
-                    for _ in 0..self.height {
-                        self.cursor_down();
-                    }
-                }
-                KeyCode::Tab => {
-                    // Insert 4 spaces
-                    for _ in 0..4 {
-                        self.insert_char(' ');
-                    }
-                }
-                _ => {}
             }
             self.ensure_cursor_visible();
         }
@@ -294,6 +348,74 @@ impl TextArea {
             self.cursor_row += 1;
             self.cursor_col = self.cursor_col.min(self.current_line_len());
         }
+    }
+
+    fn cursor_word_right(&mut self) {
+        let line = &self.lines[self.cursor_row];
+        let len = line.len();
+        if self.cursor_col >= len {
+            // Move to next line if possible
+            if self.cursor_row < self.lines.len() - 1 {
+                self.cursor_row += 1;
+                self.cursor_col = 0;
+            }
+            return;
+        }
+        // Skip current word chars
+        while self.cursor_col < len && line[self.cursor_col] != ' ' {
+            self.cursor_col += 1;
+        }
+        // Skip whitespace
+        while self.cursor_col < len && line[self.cursor_col] == ' ' {
+            self.cursor_col += 1;
+        }
+    }
+
+    fn cursor_word_left(&mut self) {
+        if self.cursor_col == 0 {
+            // Move to end of previous line if possible
+            if self.cursor_row > 0 {
+                self.cursor_row -= 1;
+                self.cursor_col = self.current_line_len();
+            }
+            return;
+        }
+        let line = &self.lines[self.cursor_row];
+        // Skip whitespace
+        while self.cursor_col > 0 && line[self.cursor_col - 1] == ' ' {
+            self.cursor_col -= 1;
+        }
+        // Skip word chars
+        while self.cursor_col > 0 && line[self.cursor_col - 1] != ' ' {
+            self.cursor_col -= 1;
+        }
+    }
+
+    fn delete_word_before_cursor(&mut self) {
+        if self.cursor_col == 0 {
+            return;
+        }
+        let line = &self.lines[self.cursor_row];
+        let mut end = self.cursor_col;
+        // Skip whitespace
+        while end > 0 && line[end - 1] == ' ' {
+            end -= 1;
+        }
+        // Skip word chars
+        while end > 0 && line[end - 1] != ' ' {
+            end -= 1;
+        }
+        self.lines[self.cursor_row].drain(end..self.cursor_col);
+        self.cursor_col = end;
+    }
+
+    fn delete_to_line_start(&mut self) {
+        self.lines[self.cursor_row].drain(0..self.cursor_col);
+        self.cursor_col = 0;
+    }
+
+    fn delete_to_line_end(&mut self) {
+        self.lines[self.cursor_row].truncate(self.cursor_col);
     }
 
     fn current_line_len(&self) -> usize {

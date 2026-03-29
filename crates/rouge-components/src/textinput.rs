@@ -160,45 +160,33 @@ impl TextInput {
         }
 
         if let Msg::KeyPress(key) = msg {
-            let ctrl = key.modifiers.contains(Modifiers::CTRL);
-            match key.code {
-                KeyCode::Char(ch) if !ctrl => {
+            if self.key_map.delete_char_backward.matches(key) {
+                self.delete_before_cursor();
+            } else if self.key_map.delete_char_forward.matches(key) {
+                self.delete_after_cursor();
+            } else if self.key_map.word_forward.matches(key) {
+                self.cursor_word_right();
+            } else if self.key_map.word_backward.matches(key) {
+                self.cursor_word_left();
+            } else if self.key_map.char_backward.matches(key) {
+                self.cursor_left();
+            } else if self.key_map.char_forward.matches(key) {
+                self.cursor_right();
+            } else if self.key_map.line_start.matches(key) {
+                self.cursor_start();
+            } else if self.key_map.line_end.matches(key) {
+                self.cursor_end();
+            } else if self.key_map.delete_word_backward.matches(key) {
+                self.delete_word_before_cursor();
+            } else if self.key_map.delete_before_cursor.matches(key) {
+                self.delete_to_start();
+            } else if self.key_map.kill_line.matches(key) {
+                self.delete_to_end();
+            } else if let KeyCode::Char(ch) = key.code {
+                // Insert normal characters (no modifiers except shift)
+                if !key.modifiers.contains(Modifiers::CTRL) && !key.modifiers.contains(Modifiers::ALT) {
                     self.insert_char(ch);
                 }
-                KeyCode::Backspace => {
-                    self.delete_before_cursor();
-                }
-                KeyCode::Delete => {
-                    self.delete_after_cursor();
-                }
-                KeyCode::Left => {
-                    self.cursor_left();
-                }
-                KeyCode::Right => {
-                    self.cursor_right();
-                }
-                KeyCode::Home => {
-                    self.cursor_start();
-                }
-                KeyCode::Char('a') if ctrl => {
-                    self.cursor_start();
-                }
-                KeyCode::End => {
-                    self.cursor_end();
-                }
-                KeyCode::Char('e') if ctrl => {
-                    self.cursor_end();
-                }
-                KeyCode::Char('w') if ctrl => {
-                    self.delete_word_before_cursor();
-                }
-                KeyCode::Char('u') if ctrl => {
-                    self.delete_to_start();
-                }
-                KeyCode::Char('k') if ctrl => {
-                    self.delete_to_end();
-                }
-                _ => {}
             }
             self.update_cursor_char();
         }
@@ -290,6 +278,37 @@ impl TextInput {
 
     fn cursor_end(&mut self) {
         self.pos = self.value.len();
+        self.update_offset();
+    }
+
+    fn cursor_word_right(&mut self) {
+        let len = self.value.len();
+        if self.pos >= len {
+            return;
+        }
+        // Skip current word chars
+        while self.pos < len && self.value[self.pos] != ' ' {
+            self.pos += 1;
+        }
+        // Skip whitespace
+        while self.pos < len && self.value[self.pos] == ' ' {
+            self.pos += 1;
+        }
+        self.update_offset();
+    }
+
+    fn cursor_word_left(&mut self) {
+        if self.pos == 0 {
+            return;
+        }
+        // Skip whitespace
+        while self.pos > 0 && self.value[self.pos - 1] == ' ' {
+            self.pos -= 1;
+        }
+        // Skip word chars
+        while self.pos > 0 && self.value[self.pos - 1] != ' ' {
+            self.pos -= 1;
+        }
         self.update_offset();
     }
 
