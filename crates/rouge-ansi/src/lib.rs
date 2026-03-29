@@ -1,4 +1,5 @@
 pub mod cellbuf;
+pub mod osc;
 pub mod pad;
 pub mod parser;
 pub mod sgr;
@@ -8,6 +9,7 @@ pub mod width;
 pub mod wrap;
 
 pub use cellbuf::{Buffer, Cell, CellStyle, Screen, ScreenOptions, AttrMask, UnderlineStyle, Link, Position, Rect};
+pub use osc::{set_window_title, hyperlink_open, hyperlink_close, set_clipboard, request_clipboard, notify};
 pub use pad::{pad, pad_left, pad_right};
 pub use parser::{Handler, Parser};
 pub use sgr::SgrStyle;

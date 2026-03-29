@@ -3,6 +3,16 @@ use rouge_style::Style;
 
 use crate::key::Binding;
 
+/// Context passed to the gutter rendering function.
+pub struct GutterContext {
+    /// Zero-based line index in the content.
+    pub index: usize,
+    /// Total number of lines in the content.
+    pub total_lines: usize,
+    /// Whether this is a soft-wrapped line (not the first line of a logical line).
+    pub soft: bool,
+}
+
 /// Key bindings for the Viewport component.
 pub struct ViewportKeyMap {
     pub up: Binding,
@@ -35,10 +45,14 @@ pub struct Viewport {
     width: usize,
     height: usize,
     y_offset: usize,
+    x_offset: usize,
+    horizontal_step: usize,
     lines: Vec<String>,
     pub mouse_wheel_enabled: bool,
     pub mouse_wheel_delta: usize,
     pub style: Style,
+    pub gutter_func: Option<Box<dyn Fn(GutterContext) -> String + Send>>,
+    pub style_line_func: Option<Box<dyn Fn(usize) -> Style + Send>>,
 }
 
 impl Viewport {
@@ -48,10 +62,14 @@ impl Viewport {
             width,
             height,
             y_offset: 0,
+            x_offset: 0,
+            horizontal_step: 4,
             lines: Vec::new(),
             mouse_wheel_enabled: true,
             mouse_wheel_delta: 3,
             style: Style::new(),
+            gutter_func: None,
+            style_line_func: None,
         }
     }
 

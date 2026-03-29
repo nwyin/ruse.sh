@@ -70,6 +70,29 @@ impl SgrStyle {
         self.push_param("4:5")
     }
 
+    // Advanced attributes
+    pub fn overline(self) -> Self {
+        self.push_num(53)
+    }
+
+    pub fn superscript(self) -> Self {
+        self.push_num(73)
+    }
+
+    pub fn subscript(self) -> Self {
+        self.push_num(74)
+    }
+
+    /// Select alternate font (0=default, 1-9=alternate).
+    pub fn font(self, n: u8) -> Self {
+        self.push_num(10 + n.min(9))
+    }
+
+    /// Normal intensity (resets bold and faint).
+    pub fn normal_intensity(self) -> Self {
+        self.push_num(22)
+    }
+
     // Foreground colors
     pub fn fg_basic(self, color: u8) -> Self {
         let code = if color < 8 { 30 + color } else { 90 + (color - 8) };

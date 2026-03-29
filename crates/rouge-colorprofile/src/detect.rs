@@ -108,8 +108,13 @@ fn env_color_profile(env: &HashMap<&str, &str>) -> Profile {
         }
     }
 
-    // tmux / screen -> at least Ansi256
+    // tmux / screen -> check for TrueColor capability via tmux info
     if term.starts_with("tmux") || term.starts_with("screen") {
+        if env.get("TMUX").is_some_and(|v| !v.is_empty()) {
+            if let Some(profile) = detect_tmux_truecolor() {
+                return profile;
+            }
+        }
         if p < Profile::Ansi256 {
             p = Profile::Ansi256;
         }
@@ -144,6 +149,21 @@ fn env_color_profile(env: &HashMap<&str, &str>) -> Profile {
     }
 
     p
+}
+
+/// Detect TrueColor support by running `tmux info` and checking for Tc/RGB capabilities.
+fn detect_tmux_truecolor() -> Option<Profile> {
+    let output = std::process::Command::new("tmux")
+        .arg("info")
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        if (line.contains("Tc") || line.contains("RGB")) && line.contains("true") {
+            return Some(Profile::TrueColor);
+        }
+    }
+    None
 }
 
 /// Parse a string as a boolean, mimicking Go's `strconv.ParseBool`.

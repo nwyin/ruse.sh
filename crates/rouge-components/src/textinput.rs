@@ -49,6 +49,7 @@ pub struct TextInput {
     value: Vec<char>,
     pos: usize,
     offset: usize,
+    offset_right: usize,
     width: usize,
     prompt: String,
     placeholder: String,
@@ -61,6 +62,12 @@ pub struct TextInput {
     placeholder_style: Style,
     #[allow(dead_code)]
     cursor_style: Style,
+    suggestions: Vec<String>,
+    matched_suggestions: Vec<String>,
+    current_suggestion_idx: usize,
+    show_suggestions: bool,
+    validate: Option<Box<dyn Fn(&str) -> Result<(), String> + Send>>,
+    validation_err: Option<String>,
 }
 
 impl Default for TextInput {
@@ -76,6 +83,7 @@ impl TextInput {
             value: Vec::new(),
             pos: 0,
             offset: 0,
+            offset_right: 0,
             width: 40,
             prompt: String::new(),
             placeholder: String::new(),
@@ -87,6 +95,12 @@ impl TextInput {
             style: Style::new(),
             placeholder_style: Style::new().faint(true),
             cursor_style: Style::new(),
+            suggestions: Vec::new(),
+            matched_suggestions: Vec::new(),
+            current_suggestion_idx: 0,
+            show_suggestions: false,
+            validate: None,
+            validation_err: None,
         }
     }
 
@@ -113,6 +127,27 @@ impl TextInput {
     pub fn with_width(mut self, w: usize) -> Self {
         self.width = w;
         self
+    }
+
+    pub fn set_suggestions(&mut self, suggestions: Vec<String>) {
+        self.suggestions = suggestions;
+        self.update_suggestions();
+    }
+
+    pub fn current_suggestion(&self) -> Option<&str> {
+        if self.show_suggestions && !self.matched_suggestions.is_empty() {
+            Some(&self.matched_suggestions[self.current_suggestion_idx])
+        } else {
+            None
+        }
+    }
+
+    pub fn set_validate<F: Fn(&str) -> Result<(), String> + Send + 'static>(&mut self, f: F) {
+        self.validate = Some(Box::new(f));
+    }
+
+    pub fn validation_error(&self) -> Option<&str> {
+        self.validation_err.as_deref()
     }
 
     pub fn value(&self) -> String {
@@ -159,6 +194,8 @@ impl TextInput {
             return cursor_cmd;
         }
 
+        let old_value: String = self.value.iter().collect();
+
         if let Msg::KeyPress(key) = msg {
             if self.key_map.delete_char_backward.matches(key) {
                 self.delete_before_cursor();
@@ -189,6 +226,14 @@ impl TextInput {
                 }
             }
             self.update_cursor_char();
+            self.handle_overflow();
+
+            // Update suggestions and validation when value changes
+            let new_value: String = self.value.iter().collect();
+            if old_value != new_value {
+                self.update_suggestions();
+                self.run_validation();
+            }
         }
 
         cursor_cmd
@@ -371,6 +416,62 @@ impl TextInput {
             self.cursor.set_char(&display[self.pos].to_string());
         } else {
             self.cursor.set_char(" ");
+        }
+    }
+
+    /// Adjust horizontal scroll offset based on cursor position and width.
+    fn handle_overflow(&mut self) {
+        let avail = self.available_width();
+        if avail == 0 {
+            return;
+        }
+        if self.pos < self.offset {
+            self.offset = self.pos;
+            self.offset_right = self.offset + avail;
+        } else if self.pos >= self.offset_right {
+            self.offset_right = self.pos + 1;
+            self.offset = self.offset_right.saturating_sub(avail);
+        }
+        // Clamp offset_right
+        let max_len = self.value.len();
+        if self.offset_right > max_len + 1 {
+            self.offset_right = max_len + 1;
+        }
+    }
+
+    fn update_suggestions(&mut self) {
+        if self.suggestions.is_empty() {
+            self.matched_suggestions.clear();
+            self.show_suggestions = false;
+            return;
+        }
+        let value: String = self.value.iter().collect();
+        if value.is_empty() {
+            self.matched_suggestions.clear();
+            self.show_suggestions = false;
+            return;
+        }
+        let lower_value = value.to_lowercase();
+        self.matched_suggestions = self
+            .suggestions
+            .iter()
+            .filter(|s| s.to_lowercase().starts_with(&lower_value))
+            .cloned()
+            .collect();
+        self.show_suggestions = !self.matched_suggestions.is_empty();
+        // Reset index if out of bounds
+        if self.current_suggestion_idx >= self.matched_suggestions.len() {
+            self.current_suggestion_idx = 0;
+        }
+    }
+
+    fn run_validation(&mut self) {
+        if let Some(ref validate) = self.validate {
+            let value: String = self.value.iter().collect();
+            match validate(&value) {
+                Ok(()) => self.validation_err = None,
+                Err(e) => self.validation_err = Some(e),
+            }
         }
     }
 }
