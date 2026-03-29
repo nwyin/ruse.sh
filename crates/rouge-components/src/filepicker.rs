@@ -39,6 +39,7 @@ pub struct DirEntry {
     pub path: PathBuf,
     pub is_dir: bool,
     pub size: u64,
+    pub permissions: Option<u32>,
 }
 
 struct ReadDirMsg {
@@ -122,6 +123,16 @@ impl FilePicker {
         self
     }
 
+    pub fn with_show_permissions(mut self, v: bool) -> Self {
+        self.show_permissions = v;
+        self
+    }
+
+    pub fn with_show_size(mut self, v: bool) -> Self {
+        self.show_size = v;
+        self
+    }
+
     pub fn current_directory(&self) -> &Path {
         &self.current_dir
     }
@@ -197,15 +208,25 @@ impl FilePicker {
 
             let icon = if entry.is_dir { "📁 " } else { "  " };
 
+            let perms_str = if self.show_permissions {
+                if let Some(mode) = entry.permissions {
+                    format!("{} ", format_permissions(mode))
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            };
+
             let name = if entry.is_dir {
-                format!("{}{}/", icon, entry.name)
+                format!("{}{}{}/", perms_str, icon, entry.name)
             } else {
                 let size_str = if self.show_size {
                     format!(" ({})", human_size(entry.size))
                 } else {
                     String::new()
                 };
-                format!("{}{}{}", icon, entry.name, size_str)
+                format!("{}{}{}{}", perms_str, icon, entry.name, size_str)
             };
 
             let style = if i == self.cursor {
@@ -247,11 +268,20 @@ impl FilePicker {
                     let is_dir = metadata.as_ref().is_some_and(|m| m.is_dir());
                     let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
 
+                    #[cfg(unix)]
+                    let permissions = metadata.as_ref().map(|m| {
+                        use std::os::unix::fs::PermissionsExt;
+                        m.permissions().mode()
+                    });
+                    #[cfg(not(unix))]
+                    let permissions = None;
+
                     entries.push(DirEntry {
                         name,
                         path: entry.path(),
                         is_dir,
                         size,
+                        permissions,
                     });
                 }
             }
@@ -296,6 +326,29 @@ impl Default for FilePicker {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn format_permissions(mode: u32) -> String {
+    let mut s = String::with_capacity(9);
+    let flags = [
+        (0o400, 'r'),
+        (0o200, 'w'),
+        (0o100, 'x'),
+        (0o040, 'r'),
+        (0o020, 'w'),
+        (0o010, 'x'),
+        (0o004, 'r'),
+        (0o002, 'w'),
+        (0o001, 'x'),
+    ];
+    for &(bit, ch) in &flags {
+        if mode & bit != 0 {
+            s.push(ch);
+        } else {
+            s.push('-');
+        }
+    }
+    s
 }
 
 fn human_size(bytes: u64) -> String {

@@ -30,16 +30,22 @@ pub mod prelude {
         Cmd, CmdInner, KeyCode, KeyEvent, Model, Modifiers, MouseButton, MouseEvent, MouseMode,
         Msg, Program, ProgramError, View,
     };
-    pub use rouge_runtime::{batch, clear_screen, cmd, cmd_async, println, quit, sequence, tick};
+    pub use rouge_runtime::{
+        batch, clear_screen, cmd, cmd_async, every, exec, println, quit, raw, read_clipboard,
+        sequence, set_clipboard, tick, ProgramHandle,
+    };
 
     // Styling
     pub use rouge_style::{
-        Color, Position, Style, Border,
+        Color, Position, Style, Border, UnderlineStyle,
         NORMAL_BORDER, ROUNDED_BORDER, BLOCK_BORDER, DOUBLE_BORDER, THICK_BORDER,
         HIDDEN_BORDER, ASCII_BORDER,
     };
     pub use rouge_style::{
         join_horizontal, join_vertical, place, place_horizontal, place_vertical,
+        style_runes, style_ranges, StyleRange,
+        blend_1d, blend_2d, light_dark, complete, darken, lighten, complementary, is_dark,
+        Tree, Enumerator, Layer, Compositor, Whitespace,
     };
 
     // Components
@@ -49,6 +55,7 @@ pub mod prelude {
     };
     pub use rouge_components::{
         dot_spinner, ellipsis_spinner, globe_spinner, line_spinner, mini_dot_spinner,
-        moon_spinner, pulse_spinner,
+        moon_spinner, pulse_spinner, jump_spinner, points_spinner, monkey_spinner,
+        meter_spinner, hamburger_spinner,
     };
 }

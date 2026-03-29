@@ -7,6 +7,7 @@ pub mod parser;
 pub mod sgr;
 pub mod strip;
 pub mod truncate;
+pub mod vt;
 pub mod width;
 pub mod wrap;
 
@@ -20,4 +21,5 @@ pub use sgr::SgrStyle;
 pub use strip::strip_ansi;
 pub use truncate::{truncate, truncate_left};
 pub use width::{grapheme_width, string_height, string_width};
+pub use vt::Terminal;
 pub use wrap::{wordwrap, wrap};
