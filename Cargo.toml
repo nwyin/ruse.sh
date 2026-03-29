@@ -1,0 +1,41 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/rouge-ansi",
+    "crates/rouge-harmonica",
+    "crates/rouge-colorprofile",
+    "crates/rouge-style",
+    "crates/rouge-runtime",
+    "crates/rouge-components",
+    "crates/rouge-glamour",
+    "crates/rouge",
+]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+
+[workspace.dependencies]
+rouge-ansi = { path = "crates/rouge-ansi" }
+rouge-colorprofile = { path = "crates/rouge-colorprofile" }
+rouge-harmonica = { path = "crates/rouge-harmonica" }
+rouge-style = { path = "crates/rouge-style" }
+rouge-runtime = { path = "crates/rouge-runtime" }
+rouge-components = { path = "crates/rouge-components" }
+rouge-glamour = { path = "crates/rouge-glamour" }
+rouge = { path = "crates/rouge" }
+
+unicode-width = "0.2"
+unicode-segmentation = "1.12"
+bitflags = "2"
+palette = "0.7"
+crossterm = { version = "0.28", features = ["event-stream"] }
+tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
+thiserror = "2"
+pulldown-cmark = { version = "0.12", features = ["html"] }
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+futures = "0.3"

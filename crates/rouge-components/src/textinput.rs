@@ -1,0 +1,321 @@
+use rouge_runtime::{Cmd, KeyCode, Modifiers, Msg};
+use rouge_style::Style;
+
+use crate::cursor::{Cursor, CursorMode};
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum EchoMode {
+    Normal,
+    Password,
+    None,
+}
+
+pub struct TextInput {
+    value: Vec<char>,
+    pos: usize,
+    offset: usize,
+    width: usize,
+    prompt: String,
+    placeholder: String,
+    echo_mode: EchoMode,
+    echo_char: char,
+    focus: bool,
+    cursor: Cursor,
+    char_limit: usize,
+    style: Style,
+    placeholder_style: Style,
+    #[allow(dead_code)]
+    cursor_style: Style,
+}
+
+impl Default for TextInput {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TextInput {
+    pub fn new() -> Self {
+        Self {
+            value: Vec::new(),
+            pos: 0,
+            offset: 0,
+            width: 40,
+            prompt: String::new(),
+            placeholder: String::new(),
+            echo_mode: EchoMode::Normal,
+            echo_char: '*',
+            focus: false,
+            cursor: Cursor::new(),
+            char_limit: 0, // 0 means no limit
+            style: Style::new(),
+            placeholder_style: Style::new().faint(true),
+            cursor_style: Style::new(),
+        }
+    }
+
+    pub fn with_prompt(mut self, p: &str) -> Self {
+        self.prompt = p.to_string();
+        self
+    }
+
+    pub fn with_placeholder(mut self, p: &str) -> Self {
+        self.placeholder = p.to_string();
+        self
+    }
+
+    pub fn with_echo_mode(mut self, mode: EchoMode) -> Self {
+        self.echo_mode = mode;
+        self
+    }
+
+    pub fn with_char_limit(mut self, limit: usize) -> Self {
+        self.char_limit = limit;
+        self
+    }
+
+    pub fn with_width(mut self, w: usize) -> Self {
+        self.width = w;
+        self
+    }
+
+    pub fn value(&self) -> String {
+        self.value.iter().collect()
+    }
+
+    pub fn set_value(&mut self, s: &str) {
+        self.value = s.chars().collect();
+        if self.pos > self.value.len() {
+            self.pos = self.value.len();
+        }
+        self.update_offset();
+    }
+
+    pub fn position(&self) -> usize {
+        self.pos
+    }
+
+    pub fn set_cursor(&mut self, pos: usize) {
+        self.pos = pos.min(self.value.len());
+        self.update_offset();
+    }
+
+    pub fn focus(&mut self) -> Cmd {
+        self.focus = true;
+        self.cursor.set_mode(CursorMode::Blink);
+        self.cursor.focus()
+    }
+
+    pub fn blur(&mut self) {
+        self.focus = false;
+        self.cursor.blur();
+    }
+
+    pub fn focused(&self) -> bool {
+        self.focus
+    }
+
+    pub fn update(&mut self, msg: &Msg) -> Cmd {
+        // Forward to cursor first
+        let cursor_cmd = self.cursor.update(msg);
+
+        if !self.focus {
+            return cursor_cmd;
+        }
+
+        if let Msg::KeyPress(key) = msg {
+            let ctrl = key.modifiers.contains(Modifiers::CTRL);
+            match key.code {
+                KeyCode::Char(ch) if !ctrl => {
+                    self.insert_char(ch);
+                }
+                KeyCode::Backspace => {
+                    self.delete_before_cursor();
+                }
+                KeyCode::Delete => {
+                    self.delete_after_cursor();
+                }
+                KeyCode::Left => {
+                    self.cursor_left();
+                }
+                KeyCode::Right => {
+                    self.cursor_right();
+                }
+                KeyCode::Home => {
+                    self.cursor_start();
+                }
+                KeyCode::Char('a') if ctrl => {
+                    self.cursor_start();
+                }
+                KeyCode::End => {
+                    self.cursor_end();
+                }
+                KeyCode::Char('e') if ctrl => {
+                    self.cursor_end();
+                }
+                KeyCode::Char('w') if ctrl => {
+                    self.delete_word_before_cursor();
+                }
+                KeyCode::Char('u') if ctrl => {
+                    self.delete_to_start();
+                }
+                KeyCode::Char('k') if ctrl => {
+                    self.delete_to_end();
+                }
+                _ => {}
+            }
+            self.update_cursor_char();
+        }
+
+        cursor_cmd
+    }
+
+    pub fn view(&self) -> String {
+        let mut out = String::new();
+
+        // Prompt
+        out.push_str(&self.prompt);
+
+        if self.value.is_empty() && !self.placeholder.is_empty() && !self.focus {
+            // Show placeholder
+            out.push_str(&self.placeholder_style.render(&[&self.placeholder]));
+            return out;
+        }
+
+        let display_chars = self.get_display_chars();
+        let visible_width = self.available_width();
+
+        // Get visible portion
+        let visible_end = (self.offset + visible_width).min(display_chars.len());
+        let visible: Vec<char> = display_chars[self.offset..visible_end].to_vec();
+
+        // Render characters with cursor
+        let cursor_visible_pos = self.pos.saturating_sub(self.offset);
+
+        let cursor_style = Style::new().reverse(true);
+
+        for (i, ch) in visible.iter().enumerate() {
+            if i == cursor_visible_pos && self.focus {
+                out.push_str(&cursor_style.render(&[&ch.to_string()]));
+            } else {
+                out.push_str(&self.style.render(&[&ch.to_string()]));
+            }
+        }
+
+        // If cursor is at the end, show the cursor as a space
+        if cursor_visible_pos >= visible.len() && self.focus {
+            out.push_str(&cursor_style.render(&[" "]));
+        }
+
+        out
+    }
+
+    fn insert_char(&mut self, ch: char) {
+        if self.char_limit > 0 && self.value.len() >= self.char_limit {
+            return;
+        }
+        self.value.insert(self.pos, ch);
+        self.pos += 1;
+        self.update_offset();
+    }
+
+    fn delete_before_cursor(&mut self) {
+        if self.pos > 0 {
+            self.pos -= 1;
+            self.value.remove(self.pos);
+            self.update_offset();
+        }
+    }
+
+    fn delete_after_cursor(&mut self) {
+        if self.pos < self.value.len() {
+            self.value.remove(self.pos);
+        }
+    }
+
+    fn cursor_left(&mut self) {
+        if self.pos > 0 {
+            self.pos -= 1;
+            self.update_offset();
+        }
+    }
+
+    fn cursor_right(&mut self) {
+        if self.pos < self.value.len() {
+            self.pos += 1;
+            self.update_offset();
+        }
+    }
+
+    fn cursor_start(&mut self) {
+        self.pos = 0;
+        self.update_offset();
+    }
+
+    fn cursor_end(&mut self) {
+        self.pos = self.value.len();
+        self.update_offset();
+    }
+
+    fn delete_word_before_cursor(&mut self) {
+        if self.pos == 0 {
+            return;
+        }
+        // Skip whitespace
+        let mut end = self.pos;
+        while end > 0 && self.value[end - 1] == ' ' {
+            end -= 1;
+        }
+        // Skip word chars
+        while end > 0 && self.value[end - 1] != ' ' {
+            end -= 1;
+        }
+        self.value.drain(end..self.pos);
+        self.pos = end;
+        self.update_offset();
+    }
+
+    fn delete_to_start(&mut self) {
+        self.value.drain(0..self.pos);
+        self.pos = 0;
+        self.update_offset();
+    }
+
+    fn delete_to_end(&mut self) {
+        self.value.truncate(self.pos);
+    }
+
+    fn available_width(&self) -> usize {
+        let prompt_width = rouge_ansi::string_width(&self.prompt);
+        self.width.saturating_sub(prompt_width).saturating_sub(1) // -1 for cursor
+    }
+
+    fn update_offset(&mut self) {
+        let avail = self.available_width();
+        if avail == 0 {
+            return;
+        }
+        if self.pos < self.offset {
+            self.offset = self.pos;
+        } else if self.pos >= self.offset + avail {
+            self.offset = self.pos - avail + 1;
+        }
+    }
+
+    fn get_display_chars(&self) -> Vec<char> {
+        match self.echo_mode {
+            EchoMode::Normal => self.value.clone(),
+            EchoMode::Password => vec![self.echo_char; self.value.len()],
+            EchoMode::None => Vec::new(),
+        }
+    }
+
+    fn update_cursor_char(&mut self) {
+        let display = self.get_display_chars();
+        if self.pos < display.len() {
+            self.cursor.set_char(&display[self.pos].to_string());
+        } else {
+            self.cursor.set_char(" ");
+        }
+    }
+}

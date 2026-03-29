@@ -1,0 +1,16 @@
+[package]
+name = "rouge-runtime"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+rouge-ansi.workspace = true
+rouge-colorprofile.workspace = true
+rouge-style.workspace = true
+crossterm.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+thiserror.workspace = true
+futures.workspace = true
+bitflags.workspace = true

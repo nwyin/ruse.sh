@@ -1,0 +1,39 @@
+[package]
+name = "rouge"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+rouge-ansi.workspace = true
+rouge-colorprofile.workspace = true
+rouge-harmonica.workspace = true
+rouge-style.workspace = true
+rouge-runtime.workspace = true
+rouge-components.workspace = true
+rouge-glamour.workspace = true
+tokio.workspace = true
+
+[features]
+default = ["full"]
+full = []
+
+[[example]]
+name = "counter"
+path = "examples/counter.rs"
+
+[[example]]
+name = "todo"
+path = "examples/todo.rs"
+
+[[example]]
+name = "textinput"
+path = "examples/textinput.rs"
+
+[[example]]
+name = "viewport"
+path = "examples/viewport.rs"
+
+[[example]]
+name = "spinner"
+path = "examples/spinner.rs"
