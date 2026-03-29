@@ -1,9 +1,0 @@
-(function() {
-    var implementors = Object.fromEntries([["pulldown_cmark",[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.0/core/cmp/trait.Ord.html\" title=\"trait core::cmp::Ord\">Ord</a> for <a class=\"enum\" href=\"pulldown_cmark/enum.BlockQuoteKind.html\" title=\"enum pulldown_cmark::BlockQuoteKind\">BlockQuoteKind</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.0/core/cmp/trait.Ord.html\" title=\"trait core::cmp::Ord\">Ord</a> for <a class=\"enum\" href=\"pulldown_cmark/enum.HeadingLevel.html\" title=\"enum pulldown_cmark::HeadingLevel\">HeadingLevel</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.0/core/cmp/trait.Ord.html\" title=\"trait core::cmp::Ord\">Ord</a> for <a class=\"enum\" href=\"pulldown_cmark/enum.MetadataBlockKind.html\" title=\"enum pulldown_cmark::MetadataBlockKind\">MetadataBlockKind</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.0/core/cmp/trait.Ord.html\" title=\"trait core::cmp::Ord\">Ord</a> for <a class=\"enum\" href=\"pulldown_cmark/enum.TagEnd.html\" title=\"enum pulldown_cmark::TagEnd\">TagEnd</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.0/core/cmp/trait.Ord.html\" title=\"trait core::cmp::Ord\">Ord</a> for <a class=\"struct\" href=\"pulldown_cmark/struct.InvalidHeadingLevel.html\" title=\"struct pulldown_cmark::InvalidHeadingLevel\">InvalidHeadingLevel</a>"],["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.0/core/cmp/trait.Ord.html\" title=\"trait core::cmp::Ord\">Ord</a> for <a class=\"struct\" href=\"pulldown_cmark/struct.Options.html\" title=\"struct pulldown_cmark::Options\">Options</a>"]]]]);
-    if (window.register_implementors) {
-        window.register_implementors(implementors);
-    } else {
-        window.pending_implementors = implementors;
-    }
-})()
-//{"start":57,"fragment_lengths":[1619]}
