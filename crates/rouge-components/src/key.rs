@@ -1,11 +1,17 @@
 use rouge_runtime::{KeyCode, KeyEvent, Modifiers};
 
+/// Help text associated with a key binding.
+#[derive(Clone, Debug, Default)]
+pub struct BindingHelp {
+    pub key: String,
+    pub desc: String,
+}
+
 /// A key binding that maps one or more key strings to an action.
 #[derive(Clone, Debug)]
 pub struct Binding {
     pub keys: Vec<String>,
-    pub help_key: String,
-    pub help_desc: String,
+    pub help: BindingHelp,
     pub enabled: bool,
 }
 
@@ -13,23 +19,50 @@ impl Binding {
     pub fn new(keys: &[&str], help_key: &str, help_desc: &str) -> Self {
         Self {
             keys: keys.iter().map(|s| s.to_string()).collect(),
-            help_key: help_key.to_string(),
-            help_desc: help_desc.to_string(),
+            help: BindingHelp {
+                key: help_key.to_string(),
+                desc: help_desc.to_string(),
+            },
             enabled: true,
         }
     }
 
+    /// Returns the help key string for backwards compatibility.
+    pub fn help_key(&self) -> &str {
+        &self.help.key
+    }
+
+    /// Returns the help description string for backwards compatibility.
+    pub fn help_desc(&self) -> &str {
+        &self.help.desc
+    }
+
     pub fn enabled(&self) -> bool {
-        self.enabled
+        self.enabled && !self.keys.is_empty()
     }
 
     pub fn set_enabled(&mut self, v: bool) {
         self.enabled = v;
     }
 
+    /// Clear all keys and help text, effectively disabling this binding.
+    pub fn unbind(&mut self) {
+        self.keys.clear();
+        self.help = BindingHelp::default();
+    }
+
+    /// Builder method to set help text.
+    pub fn with_help(mut self, key: &str, desc: &str) -> Self {
+        self.help = BindingHelp {
+            key: key.to_string(),
+            desc: desc.to_string(),
+        };
+        self
+    }
+
     /// Check if a key event matches any of the binding's key strings.
     pub fn matches(&self, key: &KeyEvent) -> bool {
-        if !self.enabled {
+        if !self.enabled || self.keys.is_empty() {
             return false;
         }
         for binding_str in &self.keys {
@@ -233,5 +266,29 @@ mod tests {
         let b = Binding::new(&["Ctrl+C"], "ctrl+c", "interrupt");
         let key = make_key(KeyCode::Char('c'), Modifiers::CTRL);
         assert!(b.matches(&key));
+    }
+
+    #[test]
+    fn test_unbind() {
+        let mut b = Binding::new(&["q"], "q", "quit");
+        b.unbind();
+        let key = make_key(KeyCode::Char('q'), Modifiers::empty());
+        assert!(!b.matches(&key));
+        assert!(!b.enabled());
+        assert!(b.help.key.is_empty());
+        assert!(b.help.desc.is_empty());
+    }
+
+    #[test]
+    fn test_enabled_empty_keys() {
+        let b = Binding::new(&[], "", "nothing");
+        assert!(!b.enabled());
+    }
+
+    #[test]
+    fn test_with_help() {
+        let b = Binding::new(&["q"], "", "").with_help("q", "quit");
+        assert_eq!(b.help_key(), "q");
+        assert_eq!(b.help_desc(), "quit");
     }
 }

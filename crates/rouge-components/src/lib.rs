@@ -17,7 +17,7 @@ pub mod viewport;
 pub use cursor::{Cursor, CursorMode};
 pub use filepicker::{DirEntry, FilePicker, FilePickerStyles};
 pub use help::Help;
-pub use key::{Binding, KeyMap, key_matches};
+pub use key::{Binding, BindingHelp, KeyMap, key_matches};
 pub use list::{List, ListItem, ListStyles, SimpleItem};
 pub use paginator::{Paginator, PaginatorType};
 pub use progress::Progress;

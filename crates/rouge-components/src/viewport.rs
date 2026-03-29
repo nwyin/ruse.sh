@@ -1,7 +1,37 @@
-use rouge_runtime::{Cmd, KeyCode, Modifiers, Msg, MouseButton};
+use rouge_runtime::{Cmd, Msg, MouseButton};
 use rouge_style::Style;
 
+use crate::key::Binding;
+
+/// Key bindings for the Viewport component.
+pub struct ViewportKeyMap {
+    pub up: Binding,
+    pub down: Binding,
+    pub page_up: Binding,
+    pub page_down: Binding,
+    pub half_page_up: Binding,
+    pub half_page_down: Binding,
+    pub goto_top: Binding,
+    pub goto_bottom: Binding,
+}
+
+impl Default for ViewportKeyMap {
+    fn default() -> Self {
+        Self {
+            up: Binding::new(&["up", "k"], "↑/k", "up"),
+            down: Binding::new(&["down", "j"], "↓/j", "down"),
+            page_up: Binding::new(&["b", "pgup"], "b/pgup", "page up"),
+            page_down: Binding::new(&["f", "pgdn", "space"], "f/pgdn", "page down"),
+            half_page_up: Binding::new(&["u", "ctrl+u"], "u", "½ page up"),
+            half_page_down: Binding::new(&["d", "ctrl+d"], "d", "½ page down"),
+            goto_top: Binding::new(&["home", "g"], "g/home", "go to start"),
+            goto_bottom: Binding::new(&["end", "G"], "G/end", "go to end"),
+        }
+    }
+}
+
 pub struct Viewport {
+    pub key_map: ViewportKeyMap,
     width: usize,
     height: usize,
     y_offset: usize,
@@ -14,6 +44,7 @@ pub struct Viewport {
 impl Viewport {
     pub fn new(width: usize, height: usize) -> Self {
         Self {
+            key_map: ViewportKeyMap::default(),
             width,
             height,
             y_offset: 0,
@@ -110,17 +141,22 @@ impl Viewport {
     pub fn update(&mut self, msg: &Msg) -> Cmd {
         match msg {
             Msg::KeyPress(key) => {
-                let ctrl = key.modifiers.contains(Modifiers::CTRL);
-                match key.code {
-                    KeyCode::Up | KeyCode::Char('k') => self.line_up(1),
-                    KeyCode::Down | KeyCode::Char('j') => self.line_down(1),
-                    KeyCode::PageUp => self.page_up(),
-                    KeyCode::PageDown => self.page_down(),
-                    KeyCode::Home | KeyCode::Char('g') => self.goto_top(),
-                    KeyCode::End | KeyCode::Char('G') => self.goto_bottom(),
-                    KeyCode::Char('u') if ctrl => self.half_page_up(),
-                    KeyCode::Char('d') if ctrl => self.half_page_down(),
-                    _ => {}
+                if self.key_map.up.matches(key) {
+                    self.line_up(1);
+                } else if self.key_map.down.matches(key) {
+                    self.line_down(1);
+                } else if self.key_map.page_up.matches(key) {
+                    self.page_up();
+                } else if self.key_map.page_down.matches(key) {
+                    self.page_down();
+                } else if self.key_map.half_page_up.matches(key) {
+                    self.half_page_up();
+                } else if self.key_map.half_page_down.matches(key) {
+                    self.half_page_down();
+                } else if self.key_map.goto_top.matches(key) {
+                    self.goto_top();
+                } else if self.key_map.goto_bottom.matches(key) {
+                    self.goto_bottom();
                 }
             }
             Msg::MouseWheel(mouse) if self.mouse_wheel_enabled => match mouse.button {

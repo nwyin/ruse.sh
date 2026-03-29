@@ -5,4 +5,8 @@ pub enum ProgramError {
     Interrupted,
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("program panicked: {0}")]
+    Panic(String),
+    #[error("program killed")]
+    Killed,
 }

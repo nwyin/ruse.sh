@@ -1,4 +1,6 @@
 use std::io::{self, Write};
+use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
 
 use crossterm::{
     cursor, event,
@@ -8,10 +10,10 @@ use crossterm::{
 };
 use futures::StreamExt;
 use rouge_ansi::cellbuf;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Notify};
 use tokio_util::sync::CancellationToken;
 
-use crate::cmd::CmdInner;
+use crate::cmd::{CmdInner, ExecRequest, RawSequence};
 use crate::error::ProgramError;
 use crate::input::translate_event;
 use crate::model::Model;
@@ -35,10 +37,7 @@ impl Drop for TerminalGuard {
         }
 
         match self.mouse_mode {
-            MouseMode::CellMotion => {
-                let _ = execute!(stdout, event::DisableMouseCapture);
-            }
-            MouseMode::AllMotion => {
+            MouseMode::CellMotion | MouseMode::AllMotion => {
                 let _ = execute!(stdout, event::DisableMouseCapture);
             }
             MouseMode::None => {}
@@ -56,6 +55,42 @@ impl Drop for TerminalGuard {
     }
 }
 
+/// Handle for controlling a running Program from outside.
+#[derive(Clone)]
+pub struct ProgramHandle {
+    msg_tx: mpsc::UnboundedSender<Msg>,
+    cancel: CancellationToken,
+    finished: Arc<Notify>,
+}
+
+impl ProgramHandle {
+    /// Send a message to the running program.
+    pub fn send(&self, msg: Msg) -> Result<(), &'static str> {
+        if self.cancel.is_cancelled() {
+            return Err("program already stopped");
+        }
+        self.msg_tx.send(msg).map_err(|_| "channel closed")
+    }
+
+    /// Request graceful shutdown (final render happens).
+    pub fn quit(&self) {
+        let _ = self.send(Msg::Quit);
+    }
+
+    /// Force immediate shutdown (skip final render).
+    pub fn kill(&self) {
+        self.cancel.cancel();
+    }
+
+    /// Wait for the program to finish.
+    pub async fn wait(&self) {
+        self.finished.notified().await;
+    }
+}
+
+/// Message filter function type.
+pub type MessageFilter<M> = Box<dyn Fn(&M, Msg) -> Option<Msg> + Send>;
+
 /// The main runtime for an Elm-architecture TUI program.
 pub struct Program<M: Model> {
     model: M,
@@ -66,6 +101,8 @@ pub struct Program<M: Model> {
     disable_renderer: bool,
     #[allow(dead_code)]
     disable_signals: bool,
+    filter: Option<MessageFilter<M>>,
+    external_cancel: Option<CancellationToken>,
 }
 
 impl<M: Model> Program<M> {
@@ -79,6 +116,8 @@ impl<M: Model> Program<M> {
             report_focus: false,
             disable_renderer: false,
             disable_signals: false,
+            filter: None,
+            external_cancel: None,
         }
     }
 
@@ -118,9 +157,74 @@ impl<M: Model> Program<M> {
         self
     }
 
+    /// Set a message filter that intercepts messages before model.update().
+    /// Return `Some(msg)` to pass through, `None` to drop the message.
+    pub fn with_filter<F>(mut self, filter: F) -> Self
+    where
+        F: Fn(&M, Msg) -> Option<Msg> + Send + 'static,
+    {
+        self.filter = Some(Box::new(filter));
+        self
+    }
+
+    /// Set an external cancellation token for program control.
+    pub fn with_context(mut self, token: CancellationToken) -> Self {
+        self.external_cancel = Some(token);
+        self
+    }
+
     /// Run the program, blocking until it exits.
     /// Returns the final model state on success.
-    pub async fn run(mut self) -> Result<M, ProgramError> {
+    pub async fn run(self) -> Result<M, ProgramError> {
+        // Wrap in panic recovery
+        let result = {
+            let mut program = self;
+            match tokio::task::spawn(AssertUnwindSafe(program.run_inner()))
+                .await
+            {
+                Ok(result) => result,
+                Err(join_err) => {
+                    // Task panicked — restore terminal
+                    restore_terminal_emergency();
+                    if join_err.is_panic() {
+                        let panic_msg = if let Ok(s) = join_err.try_into_panic() {
+                            if let Some(s) = s.downcast_ref::<&str>() {
+                                s.to_string()
+                            } else if let Some(s) = s.downcast_ref::<String>() {
+                                s.clone()
+                            } else {
+                                "unknown panic".to_string()
+                            }
+                        } else {
+                            "unknown panic".to_string()
+                        };
+
+                        // Log to file if TEA_DEBUG is set
+                        if std::env::var("TEA_DEBUG")
+                            .ok()
+                            .and_then(|v| v.parse::<bool>().ok())
+                            == Some(true)
+                        {
+                            let ts = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs();
+                            let path = format!("rouge-panic-{}.log", ts);
+                            let _ = std::fs::write(&path, &panic_msg);
+                        }
+
+                        Err(ProgramError::Panic(panic_msg))
+                    } else {
+                        Err(ProgramError::Killed)
+                    }
+                }
+            }
+        };
+        result
+    }
+
+    /// Inner run implementation (may panic, caught by outer run).
+    async fn run_inner(mut self) -> Result<M, ProgramError> {
         // Enable raw mode
         terminal::enable_raw_mode()?;
 
@@ -162,7 +266,17 @@ impl<M: Model> Program<M> {
         let mut last_view_content: Option<String> = None;
         let mut render_dirty = false;
 
+        // Set up cancellation — combine external token if provided
         let cancel = CancellationToken::new();
+        if let Some(ext) = &self.external_cancel {
+            let internal = cancel.clone();
+            let ext = ext.clone();
+            tokio::spawn(async move {
+                ext.cancelled().await;
+                internal.cancel();
+            });
+        }
+
         let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
         let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel::<CmdInner>();
 
@@ -245,7 +359,7 @@ impl<M: Model> Program<M> {
                 tokio::select! {
                     _ = render_cancel.cancelled() => break,
                     _ = interval.tick() => {
-                        let _ = &render_msg_tx; // keep alive
+                        let _ = &render_msg_tx;
                     }
                 }
             }
@@ -275,10 +389,10 @@ impl<M: Model> Program<M> {
             })
         };
 
-        // Drop the last sender clone so the channel closes when all tasks are done
+        // Drop the last sender clone
         drop(msg_tx);
 
-        // Sequence tracking: remaining commands to execute in order
+        // Sequence tracking
         let mut sequence_queue: Vec<CmdInner> = Vec::new();
 
         // Render ticker for flushing
@@ -294,8 +408,92 @@ impl<M: Model> Program<M> {
                 maybe_msg = msg_rx.recv() => {
                     match maybe_msg {
                         Some(msg) => {
+                            // Handle custom internal messages (exec, raw)
+                            let msg = match msg {
+                                Msg::Custom(any) if any.is::<ExecRequest>() => {
+                                    let exec_req = *any.downcast::<ExecRequest>().unwrap();
+                                    // Release terminal
+                                    let _ = terminal::disable_raw_mode();
+                                    if current_alt_screen {
+                                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                                    }
+                                    let _ = execute!(stdout, cursor::Show);
+
+                                    // Execute subprocess
+                                    let status = std::process::Command::new(&exec_req.program)
+                                        .args(&exec_req.args)
+                                        .status();
+
+                                    // Restore terminal
+                                    let _ = terminal::enable_raw_mode();
+                                    if current_alt_screen {
+                                        let _ = execute!(stdout, terminal::EnterAlternateScreen);
+                                    }
+                                    screen.clear();
+                                    render_dirty = true;
+
+                                    // Deliver callback result
+                                    let callback_msg = (exec_req.callback)(status);
+                                    if let Some(cmd_inner) = self.model.update(callback_msg) {
+                                        let _ = cmd_tx.send(cmd_inner);
+                                    }
+                                    continue;
+                                }
+                                Msg::Custom(any) if any.is::<RawSequence>() => {
+                                    let raw_seq = *any.downcast::<RawSequence>().unwrap();
+                                    let _ = stdout.write_all(raw_seq.0.as_bytes());
+                                    let _ = stdout.flush();
+                                    continue;
+                                }
+                                other => other,
+                            };
+
+                            // Handle suspend (Unix SIGTSTP)
+                            if matches!(msg, Msg::Suspend) {
+                                #[cfg(unix)]
+                                {
+                                    // Release terminal
+                                    let _ = terminal::disable_raw_mode();
+                                    if current_alt_screen {
+                                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                                    }
+                                    let _ = execute!(stdout, cursor::Show);
+
+                                    // Send SIGTSTP to process group
+                                    let _ = nix::sys::signal::kill(
+                                        nix::unistd::Pid::from_raw(0),
+                                        nix::sys::signal::Signal::SIGTSTP,
+                                    );
+
+                                    // When we get here, SIGCONT was received
+                                    // Restore terminal
+                                    let _ = terminal::enable_raw_mode();
+                                    if current_alt_screen {
+                                        let _ = execute!(stdout, terminal::EnterAlternateScreen);
+                                    }
+                                    screen.clear();
+                                    render_dirty = true;
+
+                                    // Send Resume to model
+                                    if let Some(cmd_inner) = self.model.update(Msg::Resume) {
+                                        let _ = cmd_tx.send(cmd_inner);
+                                    }
+                                }
+                                continue;
+                            }
+
                             let should_quit = matches!(msg, Msg::Quit | Msg::Interrupt);
                             let is_interrupt = matches!(msg, Msg::Interrupt);
+
+                            // Apply message filter
+                            let msg = if let Some(ref filter) = self.filter {
+                                match filter(&self.model, msg) {
+                                    Some(m) => m,
+                                    None => continue, // Drop filtered message
+                                }
+                            } else {
+                                msg
+                            };
 
                             match msg {
                                 Msg::Batch(cmds) => {
@@ -318,13 +516,10 @@ impl<M: Model> Program<M> {
                                     }
                                 }
                                 Msg::WindowSize { width, height } => {
-                                    // Resize the screen renderer
                                     screen.resize(width, height);
-                                    // Feed to model
                                     if let Some(cmd_inner) = self.model.update(Msg::WindowSize { width, height }) {
                                         let _ = cmd_tx.send(cmd_inner);
                                     }
-                                    // Force re-render
                                     if !self.disable_renderer {
                                         let view = self.model.view();
                                         apply_view_state(
@@ -342,22 +537,18 @@ impl<M: Model> Program<M> {
                                     }
                                 }
                                 msg => {
-                                    // Feed message to model
                                     if let Some(cmd_inner) = self.model.update(msg) {
                                         let _ = cmd_tx.send(cmd_inner);
                                     }
 
-                                    // If we have a sequence queue waiting, send next
                                     if !sequence_queue.is_empty() {
                                         let next = sequence_queue.remove(0);
                                         let _ = cmd_tx.send(next);
                                     }
 
-                                    // Re-render using cellbuf diff
                                     if !self.disable_renderer {
                                         let view = self.model.view();
 
-                                        // Apply terminal state changes (alt screen, mouse, focus)
                                         apply_view_state(
                                             &mut stdout,
                                             &view,
@@ -366,7 +557,6 @@ impl<M: Model> Program<M> {
                                             &mut current_report_focus,
                                         )?;
 
-                                        // Skip render if content hasn't changed
                                         let content_changed = last_view_content.as_ref() != Some(&view.content);
                                         if content_changed {
                                             screen.set_content(&view.content);
@@ -374,7 +564,6 @@ impl<M: Model> Program<M> {
                                             last_view_content = Some(view.content.clone());
                                         }
 
-                                        // Flush the diff to terminal
                                         if render_dirty {
                                             screen.render(&mut stdout)?;
                                             render_cursor(&mut stdout, &view)?;
@@ -405,7 +594,7 @@ impl<M: Model> Program<M> {
         // Cancel all tasks
         cancel.cancel();
 
-        // Update the guard with current terminal state before it drops
+        // Update the guard
         let _guard = TerminalGuard {
             alt_screen: current_alt_screen,
             mouse_mode: current_mouse_mode,
@@ -414,21 +603,19 @@ impl<M: Model> Program<M> {
         };
         std::mem::forget(guard);
 
-        // Wait for tasks to complete (with a short timeout)
+        // Wait for tasks
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), input_handle).await;
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), cmd_handle).await;
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), render_handle).await;
         #[cfg(unix)]
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), sigwinch_handle).await;
 
-        // _guard drops here, restoring terminal
-
         result?;
         Ok(self.model)
     }
 }
 
-/// Execute a single command (sync or async) and return the resulting message.
+/// Execute a single command.
 async fn execute_cmd(cmd: CmdInner) -> Msg {
     match cmd {
         CmdInner::Sync(f) => f(),
@@ -436,7 +623,15 @@ async fn execute_cmd(cmd: CmdInner) -> Msg {
     }
 }
 
-/// Apply terminal state changes from a View (alt screen, mouse, focus reporting).
+/// Emergency terminal restoration (for panic recovery).
+fn restore_terminal_emergency() {
+    let mut stdout = io::stdout();
+    let _ = execute!(stdout, cursor::Show);
+    let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+    let _ = terminal::disable_raw_mode();
+}
+
+/// Apply terminal state changes from a View.
 fn apply_view_state(
     stdout: &mut io::Stdout,
     view: &View,
@@ -444,7 +639,6 @@ fn apply_view_state(
     current_mouse_mode: &mut MouseMode,
     current_report_focus: &mut bool,
 ) -> io::Result<()> {
-    // Toggle alt screen if needed
     if view.alt_screen && !*current_alt_screen {
         execute!(stdout, terminal::EnterAlternateScreen)?;
         *current_alt_screen = true;
@@ -453,7 +647,6 @@ fn apply_view_state(
         *current_alt_screen = false;
     }
 
-    // Update mouse mode if changed
     if view.mouse_mode != *current_mouse_mode {
         match *current_mouse_mode {
             MouseMode::CellMotion | MouseMode::AllMotion => {
@@ -470,7 +663,6 @@ fn apply_view_state(
         *current_mouse_mode = view.mouse_mode;
     }
 
-    // Update focus reporting if changed
     if view.report_focus && !*current_report_focus {
         execute!(stdout, event::EnableFocusChange)?;
         *current_report_focus = true;
@@ -482,7 +674,7 @@ fn apply_view_state(
     Ok(())
 }
 
-/// Render cursor state from the View.
+/// Render cursor state.
 fn render_cursor(stdout: &mut io::Stdout, view: &View) -> io::Result<()> {
     if let Some(ref cursor_view) = view.cursor
         && cursor_view.visible

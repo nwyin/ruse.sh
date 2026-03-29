@@ -1,5 +1,34 @@
-use rouge_runtime::{Cmd, KeyCode, Msg};
+use rouge_runtime::{Cmd, Msg};
 use rouge_style::Style;
+
+use crate::key::Binding;
+
+/// Key bindings for the Table component.
+pub struct TableKeyMap {
+    pub line_up: Binding,
+    pub line_down: Binding,
+    pub page_up: Binding,
+    pub page_down: Binding,
+    pub half_page_up: Binding,
+    pub half_page_down: Binding,
+    pub goto_top: Binding,
+    pub goto_bottom: Binding,
+}
+
+impl Default for TableKeyMap {
+    fn default() -> Self {
+        Self {
+            line_up: Binding::new(&["up", "k"], "↑/k", "up"),
+            line_down: Binding::new(&["down", "j"], "↓/j", "down"),
+            page_up: Binding::new(&["b", "pgup"], "b/pgup", "page up"),
+            page_down: Binding::new(&["f", "pgdn", "space"], "f/pgdn", "page down"),
+            half_page_up: Binding::new(&["u", "ctrl+u"], "u", "½ page up"),
+            half_page_down: Binding::new(&["d", "ctrl+d"], "d", "½ page down"),
+            goto_top: Binding::new(&["home", "g"], "g/home", "go to start"),
+            goto_bottom: Binding::new(&["end", "G"], "G/end", "go to end"),
+        }
+    }
+}
 
 pub struct TableColumn {
     pub title: String,
@@ -23,6 +52,7 @@ impl Default for TableStyles {
 }
 
 pub struct Table {
+    pub key_map: TableKeyMap,
     columns: Vec<TableColumn>,
     rows: Vec<Vec<String>>,
     cursor: usize,
@@ -35,6 +65,7 @@ pub struct Table {
 impl Table {
     pub fn new(columns: Vec<TableColumn>) -> Self {
         Self {
+            key_map: TableKeyMap::default(),
             columns,
             rows: Vec::new(),
             cursor: 0,
@@ -89,39 +120,39 @@ impl Table {
             return None;
         }
 
-        if let Msg::KeyPress(key) = msg { match key.code {
-            KeyCode::Up | KeyCode::Char('k') => {
+        if let Msg::KeyPress(key) = msg {
+            if self.key_map.line_up.matches(key) {
                 if self.cursor > 0 {
                     self.cursor -= 1;
                     self.ensure_cursor_visible();
                 }
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
+            } else if self.key_map.line_down.matches(key) {
                 if self.cursor < self.rows.len().saturating_sub(1) {
                     self.cursor += 1;
                     self.ensure_cursor_visible();
                 }
-            }
-            KeyCode::PageUp => {
+            } else if self.key_map.page_up.matches(key) {
                 self.cursor = self.cursor.saturating_sub(self.visible_rows());
                 self.ensure_cursor_visible();
-            }
-            KeyCode::PageDown => {
+            } else if self.key_map.page_down.matches(key) {
                 self.cursor = (self.cursor + self.visible_rows()).min(self.rows.len().saturating_sub(1));
                 self.ensure_cursor_visible();
-            }
-            KeyCode::Home | KeyCode::Char('g') => {
+            } else if self.key_map.half_page_up.matches(key) {
+                self.cursor = self.cursor.saturating_sub(self.visible_rows() / 2);
+                self.ensure_cursor_visible();
+            } else if self.key_map.half_page_down.matches(key) {
+                self.cursor = (self.cursor + self.visible_rows() / 2).min(self.rows.len().saturating_sub(1));
+                self.ensure_cursor_visible();
+            } else if self.key_map.goto_top.matches(key) {
                 self.cursor = 0;
                 self.ensure_cursor_visible();
-            }
-            KeyCode::End | KeyCode::Char('G') => {
+            } else if self.key_map.goto_bottom.matches(key) {
                 if !self.rows.is_empty() {
                     self.cursor = self.rows.len() - 1;
                     self.ensure_cursor_visible();
                 }
             }
-            _ => {}
-        } }
+        }
         None
     }
 

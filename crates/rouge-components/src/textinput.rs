@@ -2,6 +2,7 @@ use rouge_runtime::{Cmd, KeyCode, Modifiers, Msg};
 use rouge_style::Style;
 
 use crate::cursor::{Cursor, CursorMode};
+use crate::key::Binding;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum EchoMode {
@@ -10,7 +11,41 @@ pub enum EchoMode {
     None,
 }
 
+/// Key bindings for the TextInput component.
+pub struct TextInputKeyMap {
+    pub char_forward: Binding,
+    pub char_backward: Binding,
+    pub word_forward: Binding,
+    pub word_backward: Binding,
+    pub delete_char_backward: Binding,
+    pub delete_char_forward: Binding,
+    pub delete_word_backward: Binding,
+    pub line_start: Binding,
+    pub line_end: Binding,
+    pub kill_line: Binding,
+    pub delete_before_cursor: Binding,
+}
+
+impl Default for TextInputKeyMap {
+    fn default() -> Self {
+        Self {
+            char_forward: Binding::new(&["right", "ctrl+f"], "→", "forward"),
+            char_backward: Binding::new(&["left", "ctrl+b"], "←", "backward"),
+            word_forward: Binding::new(&["alt+right", "ctrl+right", "alt+f"], "alt+→", "word forward"),
+            word_backward: Binding::new(&["alt+left", "ctrl+left", "alt+b"], "alt+←", "word backward"),
+            delete_char_backward: Binding::new(&["backspace"], "bksp", "delete char"),
+            delete_char_forward: Binding::new(&["delete"], "del", "delete char forward"),
+            delete_word_backward: Binding::new(&["ctrl+w"], "ctrl+w", "delete word"),
+            line_start: Binding::new(&["home", "ctrl+a"], "home", "line start"),
+            line_end: Binding::new(&["end", "ctrl+e"], "end", "line end"),
+            kill_line: Binding::new(&["ctrl+k"], "ctrl+k", "kill line"),
+            delete_before_cursor: Binding::new(&["ctrl+u"], "ctrl+u", "delete to start"),
+        }
+    }
+}
+
 pub struct TextInput {
+    pub key_map: TextInputKeyMap,
     value: Vec<char>,
     pos: usize,
     offset: usize,
@@ -37,6 +72,7 @@ impl Default for TextInput {
 impl TextInput {
     pub fn new() -> Self {
         Self {
+            key_map: TextInputKeyMap::default(),
             value: Vec::new(),
             pos: 0,
             offset: 0,

@@ -57,8 +57,8 @@ impl Help {
         let mut total_width = 0;
 
         for binding in &enabled {
-            let key = self.key_style.render(&[&binding.help_key]);
-            let desc = self.desc_style.render(&[&binding.help_desc]);
+            let key = self.key_style.render(&[binding.help_key()]);
+            let desc = self.desc_style.render(&[binding.help_desc()]);
             let part = format!("{key} {desc}");
 
             let part_width = rouge_ansi::string_width(&part);
@@ -86,8 +86,8 @@ impl Help {
 
             let mut lines: Vec<String> = Vec::new();
             for binding in &enabled {
-                let key = self.key_style.render(&[&binding.help_key]);
-                let desc = self.desc_style.render(&[&binding.help_desc]);
+                let key = self.key_style.render(&[binding.help_key()]);
+                let desc = self.desc_style.render(&[binding.help_desc()]);
                 lines.push(format!("{key} {desc}"));
             }
             columns.push(lines.join("\n"));
