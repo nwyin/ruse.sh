@@ -1,15 +1,27 @@
+use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
 use crate::strip::strip_ansi;
 
 /// Calculate the visual width of a string, ignoring ANSI escape sequences.
 ///
-/// Uses `unicode_width` for accurate width calculation of Unicode characters
-/// (e.g., CJK characters count as 2 columns).
+/// Uses grapheme cluster segmentation for correct handling of emoji sequences
+/// (e.g., ZWJ sequences like 👨‍👩‍👧) and `unicode_width` for accurate
+/// width calculation (e.g., CJK characters count as 2 columns).
 pub fn string_width(s: &str) -> usize {
     let stripped = strip_ansi(s);
-    // Process line by line and return the maximum width
-    stripped.lines().map(UnicodeWidthStr::width).max().unwrap_or(0)
+    stripped
+        .lines()
+        .map(|line| grapheme_width(line))
+        .max()
+        .unwrap_or(0)
+}
+
+/// Calculate visual width of a single line using grapheme clusters.
+pub fn grapheme_width(s: &str) -> usize {
+    s.graphemes(true)
+        .map(|g| UnicodeWidthStr::width(g))
+        .sum()
 }
 
 /// Count the number of visual lines in a string.

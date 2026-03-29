@@ -1,24 +1,52 @@
+use std::collections::HashMap;
+use std::sync::RwLock;
+
 use crate::color::{ANSI256_TO_16, Color};
 use crate::profile::Profile;
 
 /// 6x6x6 color cube thresholds: 0, 95, 135, 175, 215, 255
 const Q2C: [i32; 6] = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff];
 
+/// Thread-safe cache for color conversions to avoid repeated computation.
+static CACHE_256: std::sync::LazyLock<RwLock<HashMap<Color, Color>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+static CACHE_16: std::sync::LazyLock<RwLock<HashMap<Color, Color>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+
 impl Profile {
     /// Convert/downsample a color to match this profile's capability.
     ///
-    /// - `TrueColor`: passthrough
-    /// - `Ansi256`: RGB -> nearest in 6x6x6 cube or grayscale ramp
-    /// - `Ansi`: any color -> nearest basic color (0-15)
-    /// - `Ascii`/`NoTty`: return `NoColor`
+    /// Results are cached for `Ansi256` and `Ansi` profiles to avoid
+    /// repeated computation of the same conversions.
     pub fn convert(&self, color: Color) -> Color {
         match self {
             Profile::TrueColor => color,
-            Profile::Ansi256 => convert_to_256(color),
-            Profile::Ansi => convert_to_16(color),
+            Profile::Ansi256 => cached_convert(&CACHE_256, color, convert_to_256),
+            Profile::Ansi => cached_convert(&CACHE_16, color, convert_to_16),
             Profile::Ascii | Profile::NoTty => Color::NoColor,
         }
     }
+}
+
+/// Look up a color conversion in cache, or compute and cache it.
+fn cached_convert(
+    cache: &RwLock<HashMap<Color, Color>>,
+    color: Color,
+    convert_fn: fn(Color) -> Color,
+) -> Color {
+    // Fast path: read lock
+    if let Ok(guard) = cache.read() {
+        if let Some(cached) = guard.get(&color) {
+            return *cached;
+        }
+    }
+
+    // Slow path: compute and cache
+    let result = convert_fn(color);
+    if let Ok(mut guard) = cache.write() {
+        guard.entry(color).or_insert(result);
+    }
+    result
 }
 
 /// Map an 8-bit value to the nearest 6-cube index (0-5).
