@@ -1,8 +1,21 @@
+use std::time::Duration;
+
 use rouge_runtime::{Cmd, KeyCode, Msg};
 use rouge_style::Style;
 
 use crate::key::Binding;
 use crate::textinput::TextInput;
+
+/// Represents the current filter state of a List.
+#[derive(Clone, Debug, PartialEq)]
+pub enum FilterState {
+    /// No filter is active; all items are shown.
+    Unfiltered,
+    /// The user is actively typing a filter.
+    Filtering,
+    /// A filter has been applied (user pressed Enter).
+    FilterApplied,
+}
 
 /// Key bindings for the List component.
 pub struct ListKeyMap {
@@ -105,6 +118,9 @@ pub struct List {
     pub show_title: bool,
     pub show_filter: bool,
     pub show_status_bar: bool,
+    status_message: Option<String>,
+    status_message_lifetime: Duration,
+    filter_state: FilterState,
 }
 
 impl List {
@@ -129,6 +145,9 @@ impl List {
             show_title: true,
             show_filter: true,
             show_status_bar: true,
+            status_message: None,
+            status_message_lifetime: Duration::from_secs(2),
+            filter_state: FilterState::Unfiltered,
         }
     }
 
@@ -165,6 +184,31 @@ impl List {
         self.apply_filter();
     }
 
+    /// Set a temporary status message to display in the status bar.
+    pub fn new_status_message(&mut self, msg: &str) {
+        self.status_message = Some(msg.to_string());
+    }
+
+    /// Set the duration for which a status message remains visible.
+    pub fn set_status_message_lifetime(&mut self, d: Duration) {
+        self.status_message_lifetime = d;
+    }
+
+    /// Returns the current status message lifetime.
+    pub fn status_message_lifetime(&self) -> Duration {
+        self.status_message_lifetime
+    }
+
+    /// Returns the current filter state.
+    pub fn filter_state(&self) -> &FilterState {
+        &self.filter_state
+    }
+
+    /// Clear the current status message.
+    pub fn clear_status_message(&mut self) {
+        self.status_message = None;
+    }
+
     pub fn update(&mut self, msg: &Msg) -> Cmd {
         if self.filtering {
             return self.update_filtering(msg);
@@ -193,6 +237,7 @@ impl List {
                 }
             } else if self.show_filter && self.key_map.filter.matches(key) {
                 self.filtering = true;
+                self.filter_state = FilterState::Filtering;
                 self.filter_input.set_value(&self.filter_text);
                 return self.filter_input.focus();
             }
@@ -267,12 +312,16 @@ impl List {
         // Status bar
         if self.show_status_bar {
             out.push('\n');
-            let total = self.items.len();
-            let filtered = self.filtered_indices.len();
-            let status = if filtered == total {
-                format!("{total} items")
+            let status = if let Some(ref msg) = self.status_message {
+                msg.clone()
             } else {
-                format!("{filtered}/{total} items")
+                let total = self.items.len();
+                let filtered = self.filtered_indices.len();
+                if filtered == total {
+                    format!("{total} items")
+                } else {
+                    format!("{filtered}/{total} items")
+                }
             };
             out.push_str(&self.styles.status_bar.render(&[&status]));
         }
@@ -287,6 +336,11 @@ impl List {
                     // Accept filter
                     self.filter_text = self.filter_input.value();
                     self.filtering = false;
+                    self.filter_state = if self.filter_text.is_empty() {
+                        FilterState::Unfiltered
+                    } else {
+                        FilterState::FilterApplied
+                    };
                     self.filter_input.blur();
                     self.apply_filter();
                     return None;
@@ -294,6 +348,11 @@ impl List {
                 KeyCode::Escape => {
                     // Cancel filter
                     self.filtering = false;
+                    self.filter_state = if self.filter_text.is_empty() {
+                        FilterState::Unfiltered
+                    } else {
+                        FilterState::FilterApplied
+                    };
                     self.filter_input.blur();
                     return None;
                 }

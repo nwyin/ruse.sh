@@ -146,6 +146,22 @@ impl Viewport {
         self.line_up(self.height / 2);
     }
 
+    pub fn line_left(&mut self) {
+        self.x_offset = self.x_offset.saturating_sub(self.horizontal_step);
+    }
+
+    pub fn line_right(&mut self) {
+        self.x_offset = self.x_offset.saturating_add(self.horizontal_step);
+    }
+
+    pub fn x_offset(&self) -> usize {
+        self.x_offset
+    }
+
+    pub fn set_horizontal_step(&mut self, step: usize) {
+        self.horizontal_step = step;
+    }
+
     pub fn goto_top(&mut self) {
         self.y_offset = 0;
     }
@@ -194,24 +210,64 @@ impl Viewport {
 
         let end = (self.y_offset + self.height).min(self.lines.len());
         let visible = &self.lines[self.y_offset..end];
+        let total_lines = self.lines.len();
 
         let mut out = String::new();
         for (i, line) in visible.iter().enumerate() {
             if i > 0 {
                 out.push('\n');
             }
-            // Truncate/pad line to width if width is set
-            let displayed = if self.width > 0 {
-                let w = rouge_ansi::string_width(line);
-                if w > self.width {
-                    rouge_ansi::truncate(line, self.width, "")
+
+            // Gutter
+            let gutter_str = if let Some(ref gutter_fn) = self.gutter_func {
+                let ctx = GutterContext {
+                    index: self.y_offset + i,
+                    total_lines,
+                    soft: false,
+                };
+                gutter_fn(ctx)
+            } else {
+                String::new()
+            };
+            let gutter_width = rouge_ansi::string_width(&gutter_str);
+
+            // Apply horizontal offset (x_offset) to content
+            let shifted_line = if self.x_offset > 0 {
+                let chars: Vec<char> = line.chars().collect();
+                if self.x_offset < chars.len() {
+                    chars[self.x_offset..].iter().collect()
                 } else {
-                    let padding = self.width - w;
-                    format!("{}{}", line, " ".repeat(padding))
+                    String::new()
                 }
             } else {
                 line.clone()
             };
+
+            // Apply per-line style if provided
+            let styled_line = if let Some(ref style_fn) = self.style_line_func {
+                let line_style = style_fn(self.y_offset + i);
+                line_style.render(&[&shifted_line])
+            } else {
+                shifted_line
+            };
+
+            // Truncate/pad line to width if width is set
+            let content_width = self.width.saturating_sub(gutter_width);
+            let displayed = if content_width > 0 {
+                let w = rouge_ansi::string_width(&styled_line);
+                if w > content_width {
+                    rouge_ansi::truncate(&styled_line, content_width, "")
+                } else {
+                    let padding = content_width - w;
+                    format!("{}{}", styled_line, " ".repeat(padding))
+                }
+            } else if self.width > 0 {
+                styled_line
+            } else {
+                styled_line
+            };
+
+            out.push_str(&gutter_str);
             out.push_str(&displayed);
         }
 

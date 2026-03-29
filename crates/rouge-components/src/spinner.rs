@@ -65,6 +65,41 @@ pub fn ellipsis_spinner() -> SpinnerFrames {
     }
 }
 
+pub fn jump_spinner() -> SpinnerFrames {
+    SpinnerFrames {
+        frames: vec!["⢄", "⢂", "⢁", "⡁", "⡈", "⡐", "⡠"],
+        fps: 100,
+    }
+}
+
+pub fn points_spinner() -> SpinnerFrames {
+    SpinnerFrames {
+        frames: vec!["∙∙∙", "●∙∙", "∙●∙", "∙∙●"],
+        fps: 200,
+    }
+}
+
+pub fn monkey_spinner() -> SpinnerFrames {
+    SpinnerFrames {
+        frames: vec!["🙈", "🙈", "🙉", "🙊"],
+        fps: 300,
+    }
+}
+
+pub fn meter_spinner() -> SpinnerFrames {
+    SpinnerFrames {
+        frames: vec!["▱▱▱", "▰▱▱", "▰▰▱", "▰▰▰", "▰▰▱", "▰▱▱", "▱▱▱"],
+        fps: 150,
+    }
+}
+
+pub fn hamburger_spinner() -> SpinnerFrames {
+    SpinnerFrames {
+        frames: vec!["☱", "☲", "☴"],
+        fps: 200,
+    }
+}
+
 struct TickMsg {
     id: usize,
     tag: usize,

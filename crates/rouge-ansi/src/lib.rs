@@ -1,6 +1,8 @@
 pub mod cellbuf;
+pub mod kitty;
 pub mod osc;
 pub mod pad;
+pub mod palette;
 pub mod parser;
 pub mod sgr;
 pub mod strip;
@@ -9,8 +11,10 @@ pub mod width;
 pub mod wrap;
 
 pub use cellbuf::{Buffer, Cell, CellStyle, Screen, ScreenOptions, AttrMask, UnderlineStyle, Link, Position, Rect};
+pub use kitty::{KittyOptions, encode_image};
 pub use osc::{set_window_title, hyperlink_open, hyperlink_close, set_clipboard, request_clipboard, notify};
 pub use pad::{pad, pad_left, pad_right};
+pub use palette::Palette;
 pub use parser::{Handler, Parser};
 pub use sgr::SgrStyle;
 pub use strip::strip_ansi;
