@@ -60,6 +60,63 @@ pub fn is_dark(c: Color) -> bool {
     luminance < 0.5
 }
 
+/// Select a color based on terminal background brightness.
+pub fn light_dark(is_dark_bg: bool, light: Color, dark: Color) -> Color {
+    if is_dark_bg { dark } else { light }
+}
+
+/// Select a color variant based on color profile capability.
+pub fn complete(
+    profile: rouge_colorprofile::Profile,
+    ansi: Color,
+    ansi256: Color,
+    truecolor: Color,
+) -> Color {
+    use rouge_colorprofile::Profile;
+    match profile {
+        Profile::TrueColor => truecolor,
+        Profile::Ansi256 => ansi256,
+        Profile::Ansi => ansi,
+        _ => Color::NoColor,
+    }
+}
+
+/// Generate a 2D gradient with rotation, returning a row-major array.
+///
+/// `width` and `height` define the grid size, `colors` are gradient stops,
+/// `angle_deg` rotates the gradient (0 = left-to-right, 90 = top-to-bottom).
+pub fn blend_2d(width: usize, height: usize, colors: &[Color], angle_deg: f64) -> Vec<Color> {
+    if width == 0 || height == 0 || colors.is_empty() {
+        return vec![];
+    }
+
+    let diagonal = ((width * width + height * height) as f64).sqrt();
+    let gradient = blend_1d(diagonal.ceil() as usize + 1, colors);
+    if gradient.is_empty() {
+        return vec![Color::NoColor; width * height];
+    }
+
+    let angle_rad = angle_deg.to_radians();
+    let cos_a = angle_rad.cos();
+    let sin_a = angle_rad.sin();
+    let cx = width as f64 / 2.0;
+    let cy = height as f64 / 2.0;
+
+    let mut result = Vec::with_capacity(width * height);
+    for y in 0..height {
+        for x in 0..width {
+            let dx = x as f64 - cx;
+            let dy = y as f64 - cy;
+            let rot_x = dx * cos_a - dy * sin_a;
+            // Map from [-diagonal/2, diagonal/2] to [0, gradient.len()-1]
+            let t = (rot_x / diagonal + 0.5).clamp(0.0, 1.0);
+            let idx = (t * (gradient.len() - 1) as f64).round() as usize;
+            result.push(gradient[idx.min(gradient.len() - 1)]);
+        }
+    }
+    result
+}
+
 /// Blend a series of color stops into `steps` evenly-distributed colors,
 /// interpolating in CIELAB color space.
 ///
