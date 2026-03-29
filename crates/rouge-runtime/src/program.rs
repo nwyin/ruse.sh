@@ -4,9 +4,10 @@ use crossterm::{
     cursor, event,
     event::EventStream,
     execute, queue,
-    terminal::{self, ClearType},
+    terminal,
 };
 use futures::StreamExt;
+use rouge_ansi::cellbuf;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
@@ -155,6 +156,12 @@ impl<M: Model> Program<M> {
             raw_mode: true,
         };
 
+        // Set up the cell-buffer based screen renderer
+        let (term_w, term_h) = terminal::size().unwrap_or((80, 24));
+        let mut screen = cellbuf::Screen::new(term_w, term_h);
+        let mut last_view_content: Option<String> = None;
+        let mut render_dirty = false;
+
         let cancel = CancellationToken::new();
         let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
         let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel::<CmdInner>();
@@ -167,8 +174,17 @@ impl<M: Model> Program<M> {
         // Render initial view
         if !self.disable_renderer {
             let view = self.model.view();
-            render_view(&mut stdout, &view, &mut current_alt_screen, &mut current_mouse_mode, &mut current_report_focus)?;
-            stdout.flush()?;
+            apply_view_state(
+                &mut stdout,
+                &view,
+                &mut current_alt_screen,
+                &mut current_mouse_mode,
+                &mut current_report_focus,
+            )?;
+            screen.set_content(&view.content);
+            screen.render(&mut stdout)?;
+            render_cursor(&mut stdout, &view)?;
+            last_view_content = Some(view.content);
         }
 
         // Spawn input reader task
@@ -218,7 +234,7 @@ impl<M: Model> Program<M> {
             }
         });
 
-        // Spawn render ticker task (flushes stdout at the target FPS)
+        // Spawn render ticker task
         let render_cancel = cancel.clone();
         let render_msg_tx = msg_tx.clone();
         let fps = self.fps;
@@ -229,12 +245,6 @@ impl<M: Model> Program<M> {
                 tokio::select! {
                     _ = render_cancel.cancelled() => break,
                     _ = interval.tick() => {
-                        // Send a no-op signal to trigger a flush.
-                        // We use a custom message type that will be ignored in the update loop.
-                        // Actually, we just flush stdout directly from the main loop on tick.
-                        // Instead, use a lightweight "tick" approach: the main loop
-                        // handles rendering after updates; the ticker just ensures periodic flushes.
-                        // We'll send nothing here; instead the main loop will flush on its own interval.
                         let _ = &render_msg_tx; // keep alive
                     }
                 }
@@ -289,16 +299,13 @@ impl<M: Model> Program<M> {
 
                             match msg {
                                 Msg::Batch(cmds) => {
-                                    // Send all commands concurrently
                                     for c in cmds.into_iter().flatten() {
                                         let _ = cmd_tx.send(c);
                                     }
                                 }
                                 Msg::Sequence(cmds) => {
-                                    // Queue up sequence commands
                                     let mut valid: Vec<CmdInner> = cmds.into_iter().flatten().collect();
                                     if !valid.is_empty() {
-                                        // Send first, queue rest
                                         let first = valid.remove(0);
                                         let _ = cmd_tx.send(first);
                                         sequence_queue = valid;
@@ -306,7 +313,32 @@ impl<M: Model> Program<M> {
                                 }
                                 Msg::ClearScreen => {
                                     if !self.disable_renderer {
-                                        let _ = execute!(stdout, terminal::Clear(ClearType::All), cursor::MoveTo(0, 0));
+                                        screen.clear();
+                                        render_dirty = true;
+                                    }
+                                }
+                                Msg::WindowSize { width, height } => {
+                                    // Resize the screen renderer
+                                    screen.resize(width, height);
+                                    // Feed to model
+                                    if let Some(cmd_inner) = self.model.update(Msg::WindowSize { width, height }) {
+                                        let _ = cmd_tx.send(cmd_inner);
+                                    }
+                                    // Force re-render
+                                    if !self.disable_renderer {
+                                        let view = self.model.view();
+                                        apply_view_state(
+                                            &mut stdout,
+                                            &view,
+                                            &mut current_alt_screen,
+                                            &mut current_mouse_mode,
+                                            &mut current_report_focus,
+                                        )?;
+                                        screen.set_content(&view.content);
+                                        screen.render(&mut stdout)?;
+                                        render_cursor(&mut stdout, &view)?;
+                                        last_view_content = Some(view.content);
+                                        render_dirty = false;
                                     }
                                 }
                                 msg => {
@@ -315,23 +347,39 @@ impl<M: Model> Program<M> {
                                         let _ = cmd_tx.send(cmd_inner);
                                     }
 
-                                    // If we have a sequence queue waiting and no pending
-                                    // sequence command, send the next one
+                                    // If we have a sequence queue waiting, send next
                                     if !sequence_queue.is_empty() {
                                         let next = sequence_queue.remove(0);
                                         let _ = cmd_tx.send(next);
                                     }
 
-                                    // Re-render
+                                    // Re-render using cellbuf diff
                                     if !self.disable_renderer {
                                         let view = self.model.view();
-                                        let _ = render_view(
+
+                                        // Apply terminal state changes (alt screen, mouse, focus)
+                                        apply_view_state(
                                             &mut stdout,
                                             &view,
                                             &mut current_alt_screen,
                                             &mut current_mouse_mode,
                                             &mut current_report_focus,
-                                        );
+                                        )?;
+
+                                        // Skip render if content hasn't changed
+                                        let content_changed = last_view_content.as_ref() != Some(&view.content);
+                                        if content_changed {
+                                            screen.set_content(&view.content);
+                                            render_dirty = true;
+                                            last_view_content = Some(view.content.clone());
+                                        }
+
+                                        // Flush the diff to terminal
+                                        if render_dirty {
+                                            screen.render(&mut stdout)?;
+                                            render_cursor(&mut stdout, &view)?;
+                                            render_dirty = false;
+                                        }
                                     }
                                 }
                             }
@@ -343,7 +391,7 @@ impl<M: Model> Program<M> {
                                 break;
                             }
                         }
-                        None => break, // All senders dropped
+                        None => break,
                     }
                 }
                 _ = flush_interval.tick() => {
@@ -358,15 +406,12 @@ impl<M: Model> Program<M> {
         cancel.cancel();
 
         // Update the guard with current terminal state before it drops
-        // We need to make sure cleanup matches whatever state we're in
         let _guard = TerminalGuard {
             alt_screen: current_alt_screen,
             mouse_mode: current_mouse_mode,
             report_focus: current_report_focus,
             raw_mode: true,
         };
-        // Drop the original guard without running its destructor since
-        // we replaced it with an updated one
         std::mem::forget(guard);
 
         // Wait for tasks to complete (with a short timeout)
@@ -391,9 +436,8 @@ async fn execute_cmd(cmd: CmdInner) -> Msg {
     }
 }
 
-/// Render a view to stdout. Handles alt screen toggling, mouse mode changes,
-/// focus reporting changes, and content output.
-fn render_view(
+/// Apply terminal state changes from a View (alt screen, mouse, focus reporting).
+fn apply_view_state(
     stdout: &mut io::Stdout,
     view: &View,
     current_alt_screen: &mut bool,
@@ -411,14 +455,12 @@ fn render_view(
 
     // Update mouse mode if changed
     if view.mouse_mode != *current_mouse_mode {
-        // Disable current mode
         match *current_mouse_mode {
             MouseMode::CellMotion | MouseMode::AllMotion => {
                 execute!(stdout, event::DisableMouseCapture)?;
             }
             MouseMode::None => {}
         }
-        // Enable new mode
         match view.mouse_mode {
             MouseMode::CellMotion | MouseMode::AllMotion => {
                 execute!(stdout, event::EnableMouseCapture)?;
@@ -437,36 +479,26 @@ fn render_view(
         *current_report_focus = false;
     }
 
-    // Clear screen and write content
-    queue!(
-        stdout,
-        cursor::Hide,
-        cursor::MoveTo(0, 0),
-        terminal::Clear(ClearType::All),
-    )?;
+    Ok(())
+}
 
-    // Write the view content.
-    // In raw mode, \n only moves down (LF) without returning to column 0.
-    // Replace \n with \r\n so each line starts at column 0.
-    let content = view.content.replace('\n', "\r\n");
-    write!(stdout, "{}", content)?;
-
-    // Handle cursor
+/// Render cursor state from the View.
+fn render_cursor(stdout: &mut io::Stdout, view: &View) -> io::Result<()> {
     if let Some(ref cursor_view) = view.cursor
-        && cursor_view.visible {
-            let shape = match cursor_view.shape {
-                CursorShape::Block => cursor::SetCursorStyle::SteadyBlock,
-                CursorShape::Underline => cursor::SetCursorStyle::SteadyUnderScore,
-                CursorShape::Bar => cursor::SetCursorStyle::SteadyBar,
-            };
-            queue!(
-                stdout,
-                cursor::MoveTo(cursor_view.x, cursor_view.y),
-                shape,
-                cursor::Show,
-            )?;
-        }
-
-    stdout.flush()?;
+        && cursor_view.visible
+    {
+        let shape = match cursor_view.shape {
+            CursorShape::Block => cursor::SetCursorStyle::SteadyBlock,
+            CursorShape::Underline => cursor::SetCursorStyle::SteadyUnderScore,
+            CursorShape::Bar => cursor::SetCursorStyle::SteadyBar,
+        };
+        queue!(
+            stdout,
+            cursor::MoveTo(cursor_view.x, cursor_view.y),
+            shape,
+            cursor::Show,
+        )?;
+        stdout.flush()?;
+    }
     Ok(())
 }
