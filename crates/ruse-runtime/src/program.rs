@@ -1,5 +1,7 @@
+use std::future::Future;
 use std::io::{self, Write};
 use std::panic::AssertUnwindSafe;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use crossterm::{
@@ -176,55 +178,89 @@ impl<M: Model> Program<M> {
     /// Run the program, blocking until it exits.
     /// Returns the final model state on success.
     pub async fn run(self) -> Result<M, ProgramError> {
-        // Wrap in panic recovery
-        let result = {
-            let mut program = self;
-            match tokio::task::spawn(AssertUnwindSafe(program.run_inner()))
-                .await
-            {
-                Ok(result) => result,
-                Err(join_err) => {
-                    // Task panicked — restore terminal
-                    restore_terminal_emergency();
-                    if join_err.is_panic() {
-                        let panic_msg = if let Ok(s) = join_err.try_into_panic() {
-                            if let Some(s) = s.downcast_ref::<&str>() {
-                                s.to_string()
-                            } else if let Some(s) = s.downcast_ref::<String>() {
-                                s.clone()
-                            } else {
-                                "unknown panic".to_string()
-                            }
-                        } else {
-                            "unknown panic".to_string()
-                        };
-
-                        // Log to file if TEA_DEBUG is set
-                        if std::env::var("TEA_DEBUG")
-                            .ok()
-                            .and_then(|v| v.parse::<bool>().ok())
-                            == Some(true)
-                        {
-                            let ts = std::time::SystemTime::now()
-                                .duration_since(std::time::UNIX_EPOCH)
-                                .unwrap_or_default()
-                                .as_secs();
-                            let path = format!("ruse-panic-{}.log", ts);
-                            let _ = std::fs::write(&path, &panic_msg);
-                        }
-
-                        Err(ProgramError::Panic(panic_msg))
-                    } else {
-                        Err(ProgramError::Killed)
-                    }
-                }
-            }
-        };
-        result
+        let (msg_tx, msg_rx) = mpsc::unbounded_channel::<Msg>();
+        let cancel = CancellationToken::new();
+        self.run_with_panic_recovery(msg_tx, msg_rx, cancel, None).await
     }
 
-    /// Inner run implementation (may panic, caught by outer run).
-    async fn run_inner(mut self) -> Result<M, ProgramError> {
+    /// Run the program, returning a handle for external message injection.
+    /// The handle can send messages into the program's event loop from any thread.
+    /// The returned future must be awaited to actually run the program.
+    pub fn run_with_handle(self) -> (ProgramHandle, Pin<Box<dyn Future<Output = Result<M, ProgramError>> + Send>>) {
+        let (msg_tx, msg_rx) = mpsc::unbounded_channel::<Msg>();
+        let cancel = CancellationToken::new();
+        let finished = Arc::new(Notify::new());
+
+        let handle = ProgramHandle {
+            msg_tx: msg_tx.clone(),
+            cancel: cancel.clone(),
+            finished: finished.clone(),
+        };
+
+        let fut = Box::pin(async move {
+            let result = self.run_with_panic_recovery(msg_tx, msg_rx, cancel, Some(finished.clone())).await;
+            finished.notify_waiters();
+            result
+        });
+
+        (handle, fut)
+    }
+
+    /// Shared panic-recovery wrapper.
+    async fn run_with_panic_recovery(
+        self,
+        msg_tx: mpsc::UnboundedSender<Msg>,
+        msg_rx: mpsc::UnboundedReceiver<Msg>,
+        cancel: CancellationToken,
+        _finished: Option<Arc<Notify>>,
+    ) -> Result<M, ProgramError> {
+        match tokio::task::spawn(AssertUnwindSafe(
+            self.run_inner(msg_tx, msg_rx, cancel)
+        )).await {
+            Ok(result) => result,
+            Err(join_err) => {
+                restore_terminal_emergency();
+                if join_err.is_panic() {
+                    let panic_msg = if let Ok(s) = join_err.try_into_panic() {
+                        if let Some(s) = s.downcast_ref::<&str>() {
+                            s.to_string()
+                        } else if let Some(s) = s.downcast_ref::<String>() {
+                            s.clone()
+                        } else {
+                            "unknown panic".to_string()
+                        }
+                    } else {
+                        "unknown panic".to_string()
+                    };
+
+                    if std::env::var("TEA_DEBUG")
+                        .ok()
+                        .and_then(|v| v.parse::<bool>().ok())
+                        == Some(true)
+                    {
+                        let ts = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs();
+                        let path = format!("ruse-panic-{}.log", ts);
+                        let _ = std::fs::write(&path, &panic_msg);
+                    }
+
+                    Err(ProgramError::Panic(panic_msg))
+                } else {
+                    Err(ProgramError::Killed)
+                }
+            }
+        }
+    }
+
+    /// Inner run implementation (may panic, caught by outer wrapper).
+    async fn run_inner(
+        mut self,
+        msg_tx: mpsc::UnboundedSender<Msg>,
+        mut msg_rx: mpsc::UnboundedReceiver<Msg>,
+        cancel: CancellationToken,
+    ) -> Result<M, ProgramError> {
         // Enable raw mode
         terminal::enable_raw_mode()?;
 
@@ -266,8 +302,7 @@ impl<M: Model> Program<M> {
         let mut last_view_content: Option<String> = None;
         let mut render_dirty = false;
 
-        // Set up cancellation — combine external token if provided
-        let cancel = CancellationToken::new();
+        // Combine external cancel token if provided
         if let Some(ext) = &self.external_cancel {
             let internal = cancel.clone();
             let ext = ext.clone();
@@ -277,7 +312,6 @@ impl<M: Model> Program<M> {
             });
         }
 
-        let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<Msg>();
         let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel::<CmdInner>();
 
         // Call model.init() and submit any returned command
@@ -397,7 +431,7 @@ impl<M: Model> Program<M> {
             })
         };
 
-        // Drop the last sender clone
+        // Drop the internal sender — channel stays open if ProgramHandle holds a clone
         drop(msg_tx);
 
         // Sequence tracking
