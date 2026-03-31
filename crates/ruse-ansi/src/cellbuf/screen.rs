@@ -43,6 +43,7 @@ struct Cursor {
 
 /// Data about a touched (changed) line.
 #[derive(Debug)]
+#[allow(dead_code)]
 struct LineData {
     first_cell: usize,
     last_cell: usize,
@@ -643,26 +644,6 @@ impl Screen {
         }
     }
 
-    /// Parse an ANSI escape sequence (delegates to standalone function).
-    fn parse_escape(
-        &self,
-        bytes: &[u8],
-        start: usize,
-        style: &mut CellStyle,
-        link: &mut Link,
-    ) -> (usize, EscapeResult) {
-        parse_escape_impl(bytes, start, style, link)
-    }
-
-    /// Parse SGR parameters (delegates to standalone function).
-    fn parse_sgr(&self, params: &[u8], style: &mut CellStyle) {
-        parse_sgr_impl(params, style);
-    }
-
-    /// Parse OSC sequence (delegates to standalone function).
-    fn parse_osc(&self, data: &[u8], link: &mut Link) {
-        parse_osc_impl(data, link);
-    }
 }
 
 /// Parse an ANSI-styled string and write cells into a buffer within the given bounds.
