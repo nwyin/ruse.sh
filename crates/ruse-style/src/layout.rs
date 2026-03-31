@@ -77,11 +77,21 @@ pub fn join_horizontal(pos: Position, strs: &[&str]) -> String {
         for (j, block) in blocks.iter().enumerate() {
             let line = block[i];
             out.push_str(line);
-            // Pad to max width for this column
-            let line_w = string_width(line);
-            let pad = max_widths[j].saturating_sub(line_w);
-            if pad > 0 {
-                out.push_str(&" ".repeat(pad));
+
+            // Reset ANSI state after each column so unclosed sequences
+            // (bold, color, etc.) cannot leak into the next column or
+            // into the padding spaces.
+            if line.contains('\x1b') {
+                out.push_str("\x1b[0m");
+            }
+
+            // Pad to max width for this column (skip for the last column)
+            if j < blocks.len() - 1 {
+                let line_w = string_width(line);
+                let pad = max_widths[j].saturating_sub(line_w);
+                if pad > 0 {
+                    out.push_str(&" ".repeat(pad));
+                }
             }
         }
         if i < max_height - 1 {
@@ -283,7 +293,7 @@ mod tests {
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "AAABB");
         assert_eq!(lines[1], "AAABB");
-        assert_eq!(lines[2], "AAA  "); // b's block is padded with spaces
+        assert_eq!(lines[2], "AAA"); // last column not padded (no trailing spaces)
     }
 
     #[test]
@@ -293,9 +303,21 @@ mod tests {
         let result = join_horizontal(Position::BOTTOM, &[a, b]);
         let lines: Vec<&str> = result.split('\n').collect();
         assert_eq!(lines.len(), 3);
-        assert_eq!(lines[0], "AAA  ");
+        assert_eq!(lines[0], "AAA"); // last column empty, no trailing spaces
         assert_eq!(lines[1], "AAABB");
         assert_eq!(lines[2], "AAABB");
+    }
+
+    #[test]
+    fn test_join_horizontal_ansi_reset() {
+        let a = "\x1b[31mred\x1b[0m\n\x1b[32mgreen";
+        let b = "BB\nBB";
+        let result = join_horizontal(Position::TOP, &[a, b]);
+        let lines: Vec<&str> = result.split('\n').collect();
+        // Line 1: "red" (width 3) padded to max col width 5, reset before pad
+        assert_eq!(lines[0], "\x1b[31mred\x1b[0m\x1b[0m  BB");
+        // Line 2: "green" (width 5) no padding needed, reset prevents leak into BB
+        assert_eq!(lines[1], "\x1b[32mgreen\x1b[0mBB");
     }
 
     #[test]
