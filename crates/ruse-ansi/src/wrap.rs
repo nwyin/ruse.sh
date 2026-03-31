@@ -66,19 +66,22 @@ pub fn wordwrap(s: &str, width: usize) -> String {
         if line_idx > 0 {
             result.push('\n');
         }
-        wordwrap_line(line, width, &mut result);
+        // Detect leading whitespace so continuation lines preserve indent
+        let indent = line.chars().take_while(|&c| c == ' ').count();
+        wordwrap_line(line, width, indent, &mut result);
     }
 
     result
 }
 
-fn wordwrap_line(line: &str, width: usize, out: &mut String) {
+fn wordwrap_line(line: &str, width: usize, hanging_indent: usize, out: &mut String) {
     // Parse the line into tokens: words, spaces, and ANSI sequences
     let tokens = tokenize(line);
 
     let mut col: usize = 0;
     let mut active_seqs: Vec<String> = Vec::new();
     let mut line_start = true;
+    let mut is_first_line = true;
 
     for token in &tokens {
         match token {
@@ -93,12 +96,16 @@ fn wordwrap_line(line: &str, width: usize, out: &mut String) {
                         out.push_str("\x1b[0m");
                     }
                     out.push('\n');
+                    for _ in 0..hanging_indent {
+                        out.push(' ');
+                    }
                     for seq in &active_seqs {
                         out.push_str(seq);
                     }
-                    col = 0;
+                    col = hanging_indent;
                     line_start = true;
-                } else if !line_start {
+                    is_first_line = false;
+                } else if !line_start || is_first_line {
                     out.push(' ');
                     col += 1;
                 }
@@ -110,11 +117,15 @@ fn wordwrap_line(line: &str, width: usize, out: &mut String) {
                         out.push_str("\x1b[0m");
                     }
                     out.push('\n');
+                    for _ in 0..hanging_indent {
+                        out.push(' ');
+                    }
                     for seq in &active_seqs {
                         out.push_str(seq);
                     }
-                    col = 0;
+                    col = hanging_indent;
                     line_start = true;
+                    is_first_line = false;
                 }
 
                 if *word_width <= width {
@@ -138,10 +149,13 @@ fn wordwrap_line(line: &str, width: usize, out: &mut String) {
                                 out.push_str("\x1b[0m");
                             }
                             out.push('\n');
+                            for _ in 0..hanging_indent {
+                                out.push(' ');
+                            }
                             for seq in &active_seqs {
                                 out.push_str(seq);
                             }
-                            col = 0;
+                            col = hanging_indent;
                         }
                         out.push(wch);
                         col += ch_w;
@@ -335,5 +349,35 @@ mod tests {
     #[test]
     fn test_wrap_zero_width() {
         assert_eq!(wrap("hello", 0), "hello");
+    }
+
+    #[test]
+    fn test_wordwrap_preserves_indent() {
+        // Simulates a bullet list item with 2-space margin
+        let result = wordwrap("  hello world foo bar baz", 16);
+        let stripped = strip_ansi(&result);
+        // First line should have content
+        let lines: Vec<&str> = stripped.lines().collect();
+        assert!(lines[0].starts_with("  hello"), "first line: {:?}", lines[0]);
+        // Continuation lines should preserve the 2-space indent
+        for line in &lines[1..] {
+            assert!(line.starts_with("  "), "continuation line should be indented: {:?}", line);
+        }
+    }
+
+    #[test]
+    fn test_wordwrap_indent_no_overflow() {
+        let result = wordwrap("    short", 20);
+        assert_eq!(strip_ansi(&result), "    short");
+    }
+
+    #[test]
+    fn test_wordwrap_indent_with_ansi() {
+        let s = "  \x1b[1mhello world foo bar\x1b[0m";
+        let result = wordwrap(s, 14);
+        let stripped = strip_ansi(&result);
+        for line in stripped.lines() {
+            assert!(line.starts_with("  "), "all lines should be indented: {:?}", line);
+        }
     }
 }
