@@ -19,4 +19,5 @@ pub use model::Model;
 pub use mouse::{MouseButton, MouseEvent};
 pub use msg::Msg;
 pub use program::{Program, ProgramHandle};
+pub use ruse_ansi::Rect;
 pub use view::{CursorShape, CursorView, MouseMode, View};

@@ -4,6 +4,7 @@ use std::io::{self, Write};
 
 use super::buffer::Buffer;
 use super::cell::Cell;
+use super::geom::Rect;
 use super::link::Link;
 use super::style::CellStyle;
 
@@ -150,121 +151,28 @@ impl Screen {
         self.force_clear = true;
     }
 
-    /// Set content from a styled string.
+    /// Set content from a styled string. Clears the buffer first.
     /// Parses the string into the new buffer, handling ANSI escape sequences.
     pub fn set_content(&mut self, content: &str) {
         self.newbuf.clear();
-        let mut x: usize = 0;
-        let mut y: usize = 0;
         let w = self.width as usize;
         let h = self.height as usize;
+        parse_content_into_buffer(&mut self.newbuf, content, 0, 0, w, h);
+    }
 
-        let bytes = content.as_bytes();
-        let mut i = 0;
-        let mut current_style = CellStyle::default();
-        let mut current_link = Link::default();
+    /// Draw a styled string into a rectangular region of the buffer.
+    /// Does NOT clear the buffer — multiple calls compose naturally.
+    pub fn draw_region(&mut self, content: &str, rect: Rect) {
+        let ox = rect.x as usize;
+        let oy = rect.y as usize;
+        let mx = (rect.right() as usize).min(self.width as usize);
+        let my = (rect.bottom() as usize).min(self.height as usize);
+        parse_content_into_buffer(&mut self.newbuf, content, ox, oy, mx, my);
+    }
 
-        while i < bytes.len() && y < h {
-            let b = bytes[i];
-
-            if b == b'\x1b' {
-                // Parse ANSI escape sequence
-                let (new_i, esc_result) = self.parse_escape(bytes, i, &mut current_style, &mut current_link);
-                i = new_i;
-                if let Some(new_x) = esc_result.new_x {
-                    x = new_x.min(w);
-                }
-                continue;
-            }
-
-            if b == b'\n' {
-                y += 1;
-                x = 0;
-                i += 1;
-                continue;
-            }
-
-            if b == b'\r' {
-                x = 0;
-                i += 1;
-                continue;
-            }
-
-            if b == b'\t' {
-                // Tab: advance to next 8-column stop
-                let next_tab = (x + 8) & !7;
-                while x < next_tab && x < w {
-                    self.newbuf.set_cell(
-                        x,
-                        y,
-                        Cell::blank().with_style(current_style.clone()),
-                    );
-                    x += 1;
-                }
-                i += 1;
-                continue;
-            }
-
-            // Decode UTF-8 character
-            let ch;
-            let char_len;
-            if b < 0x80 {
-                ch = b as char;
-                char_len = 1;
-            } else if b < 0xE0 {
-                if i + 1 < bytes.len() {
-                    ch = core::str::from_utf8(&bytes[i..i + 2])
-                        .ok()
-                        .and_then(|s| s.chars().next())
-                        .unwrap_or('?');
-                    char_len = 2;
-                } else {
-                    i += 1;
-                    continue;
-                }
-            } else if b < 0xF0 {
-                if i + 2 < bytes.len() {
-                    ch = core::str::from_utf8(&bytes[i..i + 3])
-                        .ok()
-                        .and_then(|s| s.chars().next())
-                        .unwrap_or('?');
-                    char_len = 3;
-                } else {
-                    i += 1;
-                    continue;
-                }
-            } else {
-                if i + 3 < bytes.len() {
-                    ch = core::str::from_utf8(&bytes[i..i + 4])
-                        .ok()
-                        .and_then(|s| s.chars().next())
-                        .unwrap_or('?');
-                    char_len = 4;
-                } else {
-                    i += 1;
-                    continue;
-                }
-            }
-            i += char_len;
-
-            let cell = Cell::new(ch)
-                .with_style(current_style.clone())
-                .with_link(current_link.clone());
-
-            let cell_w = cell.width as usize;
-            if x + cell_w <= w {
-                self.newbuf.set_cell(x, y, cell);
-                x += cell_w;
-            } else {
-                // Doesn't fit — move to next line
-                y += 1;
-                x = 0;
-                if y < h {
-                    self.newbuf.set_cell(x, y, cell);
-                    x += cell_w;
-                }
-            }
-        }
+    /// Clear a rectangular region of the buffer to blank cells.
+    pub fn clear_region(&mut self, rect: Rect) {
+        self.newbuf.clear_rect(rect);
     }
 
     /// Render the diff between current and new buffer, writing ANSI to `w`.
@@ -723,8 +631,7 @@ impl Screen {
         }
     }
 
-    /// Parse an ANSI escape sequence from bytes, updating style state.
-    /// Returns (new byte index, optional cursor command).
+    /// Parse an ANSI escape sequence (delegates to standalone function).
     fn parse_escape(
         &self,
         bytes: &[u8],
@@ -732,6 +639,146 @@ impl Screen {
         style: &mut CellStyle,
         link: &mut Link,
     ) -> (usize, EscapeResult) {
+        parse_escape_impl(bytes, start, style, link)
+    }
+
+    /// Parse SGR parameters (delegates to standalone function).
+    fn parse_sgr(&self, params: &[u8], style: &mut CellStyle) {
+        parse_sgr_impl(params, style);
+    }
+
+    /// Parse OSC sequence (delegates to standalone function).
+    fn parse_osc(&self, data: &[u8], link: &mut Link) {
+        parse_osc_impl(data, link);
+    }
+}
+
+/// Parse an ANSI-styled string and write cells into a buffer within the given bounds.
+///
+/// Content is placed starting at `(origin_x, origin_y)`. Lines wrap at `max_x` and
+/// reset to `origin_x`. Parsing stops when `y >= max_y`.
+fn parse_content_into_buffer(
+    buffer: &mut Buffer,
+    content: &str,
+    origin_x: usize,
+    origin_y: usize,
+    max_x: usize,
+    max_y: usize,
+) {
+    let mut x = origin_x;
+    let mut y = origin_y;
+
+    let bytes = content.as_bytes();
+    let mut i = 0;
+    let mut current_style = CellStyle::default();
+    let mut current_link = Link::default();
+
+    while i < bytes.len() && y < max_y {
+        let b = bytes[i];
+
+        if b == b'\x1b' {
+            let (new_i, esc_result) = parse_escape_impl(bytes, i, &mut current_style, &mut current_link);
+            i = new_i;
+            if let Some(new_x) = esc_result.new_x {
+                // CHA is region-relative
+                x = (origin_x + new_x).min(max_x);
+            }
+            continue;
+        }
+
+        if b == b'\n' {
+            y += 1;
+            x = origin_x;
+            i += 1;
+            continue;
+        }
+
+        if b == b'\r' {
+            x = origin_x;
+            i += 1;
+            continue;
+        }
+
+        if b == b'\t' {
+            let rel = x - origin_x;
+            let next_tab = ((rel + 8) & !7) + origin_x;
+            while x < next_tab && x < max_x {
+                buffer.set_cell(x, y, Cell::blank().with_style(current_style.clone()));
+                x += 1;
+            }
+            i += 1;
+            continue;
+        }
+
+        // Decode UTF-8 character
+        let ch;
+        let char_len;
+        if b < 0x80 {
+            ch = b as char;
+            char_len = 1;
+        } else if b < 0xE0 {
+            if i + 1 < bytes.len() {
+                ch = core::str::from_utf8(&bytes[i..i + 2])
+                    .ok()
+                    .and_then(|s| s.chars().next())
+                    .unwrap_or('?');
+                char_len = 2;
+            } else {
+                i += 1;
+                continue;
+            }
+        } else if b < 0xF0 {
+            if i + 2 < bytes.len() {
+                ch = core::str::from_utf8(&bytes[i..i + 3])
+                    .ok()
+                    .and_then(|s| s.chars().next())
+                    .unwrap_or('?');
+                char_len = 3;
+            } else {
+                i += 1;
+                continue;
+            }
+        } else {
+            if i + 3 < bytes.len() {
+                ch = core::str::from_utf8(&bytes[i..i + 4])
+                    .ok()
+                    .and_then(|s| s.chars().next())
+                    .unwrap_or('?');
+                char_len = 4;
+            } else {
+                i += 1;
+                continue;
+            }
+        }
+        i += char_len;
+
+        let cell = Cell::new(ch)
+            .with_style(current_style.clone())
+            .with_link(current_link.clone());
+
+        let cell_w = cell.width as usize;
+        if x + cell_w <= max_x {
+            buffer.set_cell(x, y, cell);
+            x += cell_w;
+        } else {
+            // Doesn't fit — move to next line
+            y += 1;
+            x = origin_x;
+            if y < max_y {
+                buffer.set_cell(x, y, cell);
+                x += cell_w;
+            }
+        }
+    }
+}
+
+/// Parse an ANSI escape sequence from bytes, updating style state.
+fn parse_escape_impl(
+    bytes: &[u8],
+    start: usize,
+    style: &mut CellStyle,
+    link: &mut Link,
+) -> (usize, EscapeResult) {
         let len = bytes.len();
         let mut i = start + 1; // Skip ESC
         let mut result = EscapeResult::default();
@@ -758,7 +805,7 @@ impl Screen {
 
                     if final_byte == b'm' {
                         // SGR sequence
-                        self.parse_sgr(&bytes[params_start..i - 1], style);
+                        parse_sgr_impl(&bytes[params_start..i - 1], style);
                     } else if final_byte == b'G' {
                         // CHA — Cursor Horizontal Absolute: move to column n (1-based)
                         let param_str = std::str::from_utf8(&bytes[params_start..i - 1]).unwrap_or("1");
@@ -774,13 +821,13 @@ impl Screen {
                 while i < len {
                     if bytes[i] == 0x07 {
                         // BEL terminator
-                        self.parse_osc(&bytes[osc_start..i], link);
+                        parse_osc_impl(&bytes[osc_start..i], link);
                         i += 1;
                         break;
                     }
                     if bytes[i] == 0x1b && i + 1 < len && bytes[i + 1] == b'\\' {
                         // ST terminator
-                        self.parse_osc(&bytes[osc_start..i], link);
+                        parse_osc_impl(&bytes[osc_start..i], link);
                         i += 2;
                         break;
                     }
@@ -796,117 +843,108 @@ impl Screen {
         (i, result)
     }
 
-    /// Parse SGR parameters and update cell style.
-    fn parse_sgr(&self, params: &[u8], style: &mut CellStyle) {
-        let param_str = std::str::from_utf8(params).unwrap_or("");
-        if param_str.is_empty() {
-            *style = CellStyle::default();
-            return;
-        }
-
-        let mut parts = param_str.split(';');
-        while let Some(p) = parts.next() {
-            // Handle colon-separated subparameters (e.g., 4:3 for curly underline)
-            if p.contains(':') {
-                let sub: Vec<&str> = p.split(':').collect();
-                if sub.first() == Some(&"4") {
-                    match sub.get(1).and_then(|s| s.parse::<u8>().ok()) {
-                        Some(0) => style.ul_style = super::style::UnderlineStyle::None,
-                        Some(1) => style.ul_style = super::style::UnderlineStyle::Single,
-                        Some(2) => style.ul_style = super::style::UnderlineStyle::Double,
-                        Some(3) => style.ul_style = super::style::UnderlineStyle::Curly,
-                        Some(4) => style.ul_style = super::style::UnderlineStyle::Dotted,
-                        Some(5) => style.ul_style = super::style::UnderlineStyle::Dashed,
-                        _ => {}
-                    }
-                }
-                continue;
-            }
-
-            match p.parse::<u32>().unwrap_or(0) {
-                0 => *style = CellStyle::default(),
-                1 => style.attrs.set(super::style::AttrMask::BOLD),
-                2 => style.attrs.set(super::style::AttrMask::FAINT),
-                3 => style.attrs.set(super::style::AttrMask::ITALIC),
-                4 => style.ul_style = super::style::UnderlineStyle::Single,
-                5 => style.attrs.set(super::style::AttrMask::SLOW_BLINK),
-                6 => style.attrs.set(super::style::AttrMask::RAPID_BLINK),
-                7 => style.attrs.set(super::style::AttrMask::REVERSE),
-                8 => style.attrs.set(super::style::AttrMask::CONCEAL),
-                9 => style.attrs.set(super::style::AttrMask::STRIKETHROUGH),
-                21 => style.ul_style = super::style::UnderlineStyle::Double,
-                22 => {
-                    style.attrs.unset(super::style::AttrMask::BOLD);
-                    style.attrs.unset(super::style::AttrMask::FAINT);
-                }
-                23 => style.attrs.unset(super::style::AttrMask::ITALIC),
-                24 => style.ul_style = super::style::UnderlineStyle::None,
-                25 => {
-                    style.attrs.unset(super::style::AttrMask::SLOW_BLINK);
-                    style.attrs.unset(super::style::AttrMask::RAPID_BLINK);
-                }
-                27 => style.attrs.unset(super::style::AttrMask::REVERSE),
-                28 => style.attrs.unset(super::style::AttrMask::CONCEAL),
-                29 => style.attrs.unset(super::style::AttrMask::STRIKETHROUGH),
-                // Foreground colors
-                30..=37 => {
-                    let idx = p.parse::<u32>().unwrap() - 30;
-                    style.fg = Some(ansi_basic_color(idx as u8));
-                }
-                38 => {
-                    // Extended foreground
-                    if let Some(color) = parse_extended_color(&mut parts) {
-                        style.fg = Some(color);
-                    }
-                }
-                39 => style.fg = None,
-                // Background colors
-                40..=47 => {
-                    let idx = p.parse::<u32>().unwrap() - 40;
-                    style.bg = Some(ansi_basic_color(idx as u8));
-                }
-                48 => {
-                    if let Some(color) = parse_extended_color(&mut parts) {
-                        style.bg = Some(color);
-                    }
-                }
-                49 => style.bg = None,
-                // Underline color
-                58 => {
-                    if let Some(color) = parse_extended_color(&mut parts) {
-                        style.ul = Some(color);
-                    }
-                }
-                59 => style.ul = None,
-                // Bright foreground
-                90..=97 => {
-                    let idx = p.parse::<u32>().unwrap() - 90 + 8;
-                    style.fg = Some(ansi_basic_color(idx as u8));
-                }
-                // Bright background
-                100..=107 => {
-                    let idx = p.parse::<u32>().unwrap() - 100 + 8;
-                    style.bg = Some(ansi_basic_color(idx as u8));
-                }
-                _ => {}
-            }
-        }
+/// Parse SGR parameters and update cell style.
+fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
+    let param_str = std::str::from_utf8(params).unwrap_or("");
+    if param_str.is_empty() {
+        *style = CellStyle::default();
+        return;
     }
 
-    /// Parse OSC sequence for hyperlinks.
-    fn parse_osc(&self, data: &[u8], link: &mut Link) {
-        let s = std::str::from_utf8(data).unwrap_or("");
-        // OSC 8 ; params ; url
-        if s.starts_with("8;") {
-            let rest = &s[2..];
-            if let Some(semi) = rest.find(';') {
-                let params = &rest[..semi];
-                let url = &rest[semi + 1..];
-                if url.is_empty() {
-                    link.reset();
-                } else {
-                    *link = Link::with_params(url, params);
+    let mut parts = param_str.split(';');
+    while let Some(p) = parts.next() {
+        if p.contains(':') {
+            let sub: Vec<&str> = p.split(':').collect();
+            if sub.first() == Some(&"4") {
+                match sub.get(1).and_then(|s| s.parse::<u8>().ok()) {
+                    Some(0) => style.ul_style = super::style::UnderlineStyle::None,
+                    Some(1) => style.ul_style = super::style::UnderlineStyle::Single,
+                    Some(2) => style.ul_style = super::style::UnderlineStyle::Double,
+                    Some(3) => style.ul_style = super::style::UnderlineStyle::Curly,
+                    Some(4) => style.ul_style = super::style::UnderlineStyle::Dotted,
+                    Some(5) => style.ul_style = super::style::UnderlineStyle::Dashed,
+                    _ => {}
                 }
+            }
+            continue;
+        }
+
+        match p.parse::<u32>().unwrap_or(0) {
+            0 => *style = CellStyle::default(),
+            1 => style.attrs.set(super::style::AttrMask::BOLD),
+            2 => style.attrs.set(super::style::AttrMask::FAINT),
+            3 => style.attrs.set(super::style::AttrMask::ITALIC),
+            4 => style.ul_style = super::style::UnderlineStyle::Single,
+            5 => style.attrs.set(super::style::AttrMask::SLOW_BLINK),
+            6 => style.attrs.set(super::style::AttrMask::RAPID_BLINK),
+            7 => style.attrs.set(super::style::AttrMask::REVERSE),
+            8 => style.attrs.set(super::style::AttrMask::CONCEAL),
+            9 => style.attrs.set(super::style::AttrMask::STRIKETHROUGH),
+            21 => style.ul_style = super::style::UnderlineStyle::Double,
+            22 => {
+                style.attrs.unset(super::style::AttrMask::BOLD);
+                style.attrs.unset(super::style::AttrMask::FAINT);
+            }
+            23 => style.attrs.unset(super::style::AttrMask::ITALIC),
+            24 => style.ul_style = super::style::UnderlineStyle::None,
+            25 => {
+                style.attrs.unset(super::style::AttrMask::SLOW_BLINK);
+                style.attrs.unset(super::style::AttrMask::RAPID_BLINK);
+            }
+            27 => style.attrs.unset(super::style::AttrMask::REVERSE),
+            28 => style.attrs.unset(super::style::AttrMask::CONCEAL),
+            29 => style.attrs.unset(super::style::AttrMask::STRIKETHROUGH),
+            30..=37 => {
+                let idx = p.parse::<u32>().unwrap() - 30;
+                style.fg = Some(ansi_basic_color(idx as u8));
+            }
+            38 => {
+                if let Some(color) = parse_extended_color(&mut parts) {
+                    style.fg = Some(color);
+                }
+            }
+            39 => style.fg = None,
+            40..=47 => {
+                let idx = p.parse::<u32>().unwrap() - 40;
+                style.bg = Some(ansi_basic_color(idx as u8));
+            }
+            48 => {
+                if let Some(color) = parse_extended_color(&mut parts) {
+                    style.bg = Some(color);
+                }
+            }
+            49 => style.bg = None,
+            58 => {
+                if let Some(color) = parse_extended_color(&mut parts) {
+                    style.ul = Some(color);
+                }
+            }
+            59 => style.ul = None,
+            90..=97 => {
+                let idx = p.parse::<u32>().unwrap() - 90 + 8;
+                style.fg = Some(ansi_basic_color(idx as u8));
+            }
+            100..=107 => {
+                let idx = p.parse::<u32>().unwrap() - 100 + 8;
+                style.bg = Some(ansi_basic_color(idx as u8));
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Parse OSC sequence for hyperlinks.
+fn parse_osc_impl(data: &[u8], link: &mut Link) {
+    let s = std::str::from_utf8(data).unwrap_or("");
+    if s.starts_with("8;") {
+        let rest = &s[2..];
+        if let Some(semi) = rest.find(';') {
+            let params = &rest[..semi];
+            let url = &rest[semi + 1..];
+            if url.is_empty() {
+                link.reset();
+            } else {
+                *link = Link::with_params(url, params);
             }
         }
     }
@@ -1069,5 +1107,73 @@ mod tests {
         screen.set_content("Hello World");
         screen.render(&mut out).unwrap();
         assert!(!out.is_empty());
+    }
+
+    #[test]
+    fn test_draw_region_basic() {
+        use super::super::geom::Rect;
+        let mut screen = Screen::new(20, 5);
+        screen.draw_region("Hello", Rect::new(5, 2, 10, 2));
+        // Content at (5,2)
+        assert_eq!(screen.newbuf.cell(5, 2).unwrap().rune, 'H');
+        assert_eq!(screen.newbuf.cell(9, 2).unwrap().rune, 'o');
+        // Outside region is blank
+        assert!(screen.newbuf.cell(0, 0).unwrap().is_blank());
+    }
+
+    #[test]
+    fn test_draw_region_newline_resets_to_origin() {
+        use super::super::geom::Rect;
+        let mut screen = Screen::new(20, 5);
+        screen.draw_region("AB\nCD", Rect::new(3, 1, 10, 3));
+        assert_eq!(screen.newbuf.cell(3, 1).unwrap().rune, 'A');
+        assert_eq!(screen.newbuf.cell(4, 1).unwrap().rune, 'B');
+        // After newline, x resets to origin_x (3), not 0
+        assert_eq!(screen.newbuf.cell(3, 2).unwrap().rune, 'C');
+        assert_eq!(screen.newbuf.cell(4, 2).unwrap().rune, 'D');
+    }
+
+    #[test]
+    fn test_draw_region_clips_at_bounds() {
+        use super::super::geom::Rect;
+        let mut screen = Screen::new(20, 5);
+        screen.draw_region("ABCDEFGHIJ", Rect::new(0, 0, 5, 1));
+        // Only first 5 chars fit (wraps to next line but height is 1)
+        assert_eq!(screen.newbuf.cell(0, 0).unwrap().rune, 'A');
+        assert_eq!(screen.newbuf.cell(4, 0).unwrap().rune, 'E');
+        // Row 1 should be blank (region height is 1)
+        assert!(screen.newbuf.cell(0, 1).unwrap().is_blank());
+    }
+
+    #[test]
+    fn test_draw_region_with_ansi() {
+        use super::super::geom::Rect;
+        let mut screen = Screen::new(20, 5);
+        screen.draw_region("\x1b[1mBold\x1b[0m", Rect::new(2, 1, 10, 2));
+        let cell = screen.newbuf.cell(2, 1).unwrap();
+        assert_eq!(cell.rune, 'B');
+        assert!(cell.style.attrs.contains(super::super::style::AttrMask::BOLD));
+    }
+
+    #[test]
+    fn test_draw_region_multiple_non_overlapping() {
+        use super::super::geom::Rect;
+        let mut screen = Screen::new(20, 5);
+        screen.draw_region("Left", Rect::new(0, 0, 10, 5));
+        screen.draw_region("Right", Rect::new(10, 0, 10, 5));
+        assert_eq!(screen.newbuf.cell(0, 0).unwrap().rune, 'L');
+        assert_eq!(screen.newbuf.cell(10, 0).unwrap().rune, 'R');
+    }
+
+    #[test]
+    fn test_clear_region() {
+        use super::super::geom::Rect;
+        let mut screen = Screen::new(10, 3);
+        screen.set_content("AAAAAAAAAA\nBBBBBBBBBB\nCCCCCCCCCC");
+        screen.clear_region(Rect::new(2, 1, 5, 1));
+        assert_eq!(screen.newbuf.cell(0, 1).unwrap().rune, 'B');
+        assert!(screen.newbuf.cell(2, 1).unwrap().is_blank());
+        assert!(screen.newbuf.cell(6, 1).unwrap().is_blank());
+        assert_eq!(screen.newbuf.cell(7, 1).unwrap().rune, 'B');
     }
 }

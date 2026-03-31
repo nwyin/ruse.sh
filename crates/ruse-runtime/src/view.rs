@@ -1,7 +1,12 @@
+use ruse_ansi::Rect;
+
 /// The view returned by `Model::view()`, describing what to render.
 #[derive(Default)]
 pub struct View {
     pub content: String,
+    /// Region-based rendering: each entry draws a styled string into a bounded rectangle.
+    /// When non-empty, `content` is ignored and regions are drawn independently.
+    pub regions: Vec<(Rect, String)>,
     pub alt_screen: bool,
     pub mouse_mode: MouseMode,
     pub report_focus: bool,
@@ -15,6 +20,18 @@ impl View {
             content: content.into(),
             ..Default::default()
         }
+    }
+
+    /// Add a region: draw `content` into the given rectangle.
+    pub fn with_region(mut self, rect: Rect, content: impl Into<String>) -> Self {
+        self.regions.push((rect, content.into()));
+        self
+    }
+
+    /// Set all regions at once.
+    pub fn with_regions(mut self, regions: Vec<(Rect, String)>) -> Self {
+        self.regions = regions;
+        self
     }
 
     /// Enable alternate screen mode for this view.

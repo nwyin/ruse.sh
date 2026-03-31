@@ -337,7 +337,7 @@ impl<M: Model> Program<M> {
                 &mut current_mouse_mode,
                 &mut current_report_focus,
             )?;
-            screen.set_content(&view.content);
+            render_view(&mut screen, &view);
             screen.render(&mut stdout)?;
             render_cursor(&mut stdout, &view)?;
             last_view_content = Some(view.content);
@@ -571,7 +571,7 @@ impl<M: Model> Program<M> {
                                             &mut current_mouse_mode,
                                             &mut current_report_focus,
                                         )?;
-                                        screen.set_content(&view.content);
+                                        render_view(&mut screen, &view);
                                         screen.render(&mut stdout)?;
                                         render_cursor(&mut stdout, &view)?;
                                         last_view_content = Some(view.content);
@@ -599,9 +599,15 @@ impl<M: Model> Program<M> {
                                             &mut current_report_focus,
                                         )?;
 
-                                        let content_changed = last_view_content.as_ref() != Some(&view.content);
+                                        let uses_regions = !view.regions.is_empty();
+                                        let content_changed = if uses_regions {
+                                            // Always re-draw when using regions (diff engine deduplicates)
+                                            true
+                                        } else {
+                                            last_view_content.as_ref() != Some(&view.content)
+                                        };
                                         if content_changed {
-                                            screen.set_content(&view.content);
+                                            render_view(&mut screen, &view);
                                             render_dirty = true;
                                             last_view_content = Some(view.content.clone());
                                         }
@@ -714,6 +720,19 @@ fn apply_view_state(
     }
 
     Ok(())
+}
+
+/// Render view content into the screen buffer.
+/// Uses region-based drawing if regions are present, otherwise falls back to set_content.
+fn render_view(screen: &mut ruse_ansi::Screen, view: &View) {
+    if !view.regions.is_empty() {
+        screen.buffer_mut().clear();
+        for (rect, content) in &view.regions {
+            screen.draw_region(content, *rect);
+        }
+    } else {
+        screen.set_content(&view.content);
+    }
 }
 
 /// Render cursor state.

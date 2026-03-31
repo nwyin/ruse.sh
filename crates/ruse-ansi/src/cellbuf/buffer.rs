@@ -188,6 +188,28 @@ impl Buffer {
         }
     }
 
+    /// Copy cells from `source` into this buffer at offset `(dest_x, dest_y)`.
+    /// Clips to this buffer's bounds.
+    pub fn blit(&mut self, source: &Buffer, dest_x: usize, dest_y: usize) {
+        for sy in 0..source.height {
+            let dy = dest_y + sy;
+            if dy >= self.height {
+                break;
+            }
+            for sx in 0..source.width {
+                let dx = dest_x + sx;
+                if dx >= self.width {
+                    break;
+                }
+                if let Some(cell) = source.cell(sx, sy) {
+                    if !cell.is_empty() {
+                        self.set_cell(dx, dy, cell.clone());
+                    }
+                }
+            }
+        }
+    }
+
     /// Compute a hash for line `y` based on cell content (for diff algorithm).
     pub fn line_hash(&self, y: usize) -> u64 {
         if y >= self.height {
