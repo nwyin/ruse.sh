@@ -476,15 +476,16 @@ impl TermRenderer {
                     }
                     let code_prim = &self.style.code;
                     let sgr = self.build_sgr(code_prim);
-                    let mut rendered = String::new();
+                    // Emit prefix OUTSIDE the SGR so wordwrap can break at
+                    // the prefix space without carrying the background color.
+                    // This prevents bg bleeding when inline code wraps.
                     if let Some(ref pfx) = code_prim.prefix {
-                        rendered.push_str(pfx);
+                        out.push_str(pfx);
                     }
-                    rendered.push_str(&code);
+                    out.push_str(&sgr.styled(&code));
                     if let Some(ref sfx) = code_prim.suffix {
-                        rendered.push_str(sfx);
+                        out.push_str(sfx);
                     }
-                    out.push_str(&sgr.styled(&rendered));
                 }
                 Event::SoftBreak => {
                     if in_link {
