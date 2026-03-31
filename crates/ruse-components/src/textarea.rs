@@ -3,6 +3,15 @@ use ruse_style::Style;
 
 use crate::key::Binding;
 
+const MAX_UNDO_DEPTH: usize = 100;
+
+#[derive(Clone)]
+struct TextAreaSnapshot {
+    lines: Vec<Vec<char>>,
+    cursor_row: usize,
+    cursor_col: usize,
+}
+
 /// Key bindings for the TextArea component.
 pub struct TextAreaKeyMap {
     pub char_forward: Binding,
@@ -23,6 +32,8 @@ pub struct TextAreaKeyMap {
     pub page_down: Binding,
     pub goto_top: Binding,
     pub goto_bottom: Binding,
+    pub undo: Binding,
+    pub redo: Binding,
 }
 
 impl Default for TextAreaKeyMap {
@@ -46,6 +57,8 @@ impl Default for TextAreaKeyMap {
             page_down: Binding::new(&["pgdn"], "pgdn", "page down"),
             goto_top: Binding::new(&["ctrl+home"], "ctrl+home", "go to start"),
             goto_bottom: Binding::new(&["ctrl+end"], "ctrl+end", "go to end"),
+            undo: Binding::new(&["ctrl+z"], "ctrl+z", "undo"),
+            redo: Binding::new(&["ctrl+y", "ctrl+shift+z"], "ctrl+y", "redo"),
         }
     }
 }
@@ -64,6 +77,8 @@ pub struct TextArea {
     style: Style,
     pub line_number_style: Style,
     pub cursor_line_style: Style,
+    undo_stack: Vec<TextAreaSnapshot>,
+    redo_stack: Vec<TextAreaSnapshot>,
 }
 
 impl Default for TextArea {
@@ -87,6 +102,8 @@ impl TextArea {
             style: Style::new(),
             line_number_style: Style::new().faint(true),
             cursor_line_style: Style::new(),
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
     }
 
@@ -143,18 +160,49 @@ impl TextArea {
             return None;
         }
 
+        if let Msg::Paste(text) = msg {
+            self.save_undo();
+            for ch in text.chars() {
+                if ch == '\n' {
+                    self.insert_newline();
+                } else {
+                    self.insert_char(ch);
+                }
+            }
+            self.ensure_cursor_visible();
+            return None;
+        }
+
         if let Msg::KeyPress(key) = msg {
+            // Handle undo/redo before other mutations
+            if self.key_map.undo.matches(key) {
+                self.undo();
+                self.ensure_cursor_visible();
+                return None;
+            } else if self.key_map.redo.matches(key) {
+                self.redo();
+                self.ensure_cursor_visible();
+                return None;
+            }
+
+            // Editing operations — save undo state first
             if self.key_map.insert_newline.matches(key) {
+                self.save_undo();
                 self.insert_newline();
             } else if self.key_map.delete_char_backward.matches(key) {
+                self.save_undo();
                 self.delete_before_cursor();
             } else if self.key_map.delete_char_forward.matches(key) {
+                self.save_undo();
                 self.delete_after_cursor();
             } else if self.key_map.delete_word_backward.matches(key) {
+                self.save_undo();
                 self.delete_word_before_cursor();
             } else if self.key_map.delete_before_cursor.matches(key) {
+                self.save_undo();
                 self.delete_to_line_start();
             } else if self.key_map.delete_line.matches(key) {
+                self.save_undo();
                 self.delete_to_line_end();
             } else if self.key_map.word_forward.matches(key) {
                 self.cursor_word_right();
@@ -187,13 +235,13 @@ impl TextArea {
                 self.cursor_row = self.lines.len().saturating_sub(1);
                 self.cursor_col = self.current_line_len();
             } else if key.code == KeyCode::Tab {
-                // Insert 4 spaces
+                self.save_undo();
                 for _ in 0..4 {
                     self.insert_char(' ');
                 }
             } else if let KeyCode::Char(ch) = key.code {
-                // Insert normal characters (no ctrl/alt modifiers)
                 if !key.modifiers.contains(Modifiers::CTRL) && !key.modifiers.contains(Modifiers::ALT) {
+                    self.save_undo();
                     self.insert_char(ch);
                 }
             }
@@ -427,6 +475,42 @@ impl TextArea {
             self.y_offset = self.cursor_row;
         } else if self.cursor_row >= self.y_offset + self.height {
             self.y_offset = self.cursor_row - self.height + 1;
+        }
+    }
+
+    fn snapshot(&self) -> TextAreaSnapshot {
+        TextAreaSnapshot {
+            lines: self.lines.clone(),
+            cursor_row: self.cursor_row,
+            cursor_col: self.cursor_col,
+        }
+    }
+
+    fn restore(&mut self, snap: &TextAreaSnapshot) {
+        self.lines = snap.lines.clone();
+        self.cursor_row = snap.cursor_row;
+        self.cursor_col = snap.cursor_col;
+    }
+
+    fn save_undo(&mut self) {
+        self.undo_stack.push(self.snapshot());
+        if self.undo_stack.len() > MAX_UNDO_DEPTH {
+            self.undo_stack.remove(0);
+        }
+        self.redo_stack.clear();
+    }
+
+    fn undo(&mut self) {
+        if let Some(snap) = self.undo_stack.pop() {
+            self.redo_stack.push(self.snapshot());
+            self.restore(&snap);
+        }
+    }
+
+    fn redo(&mut self) {
+        if let Some(snap) = self.redo_stack.pop() {
+            self.undo_stack.push(self.snapshot());
+            self.restore(&snap);
         }
     }
 }

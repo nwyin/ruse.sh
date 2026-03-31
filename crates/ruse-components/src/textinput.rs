@@ -196,6 +196,20 @@ impl TextInput {
 
         let old_value: String = self.value.iter().collect();
 
+        if let Msg::Paste(text) = msg {
+            for ch in text.chars() {
+                if self.char_limit > 0 && self.value.len() >= self.char_limit {
+                    break;
+                }
+                self.insert_char(ch);
+            }
+            self.update_cursor_char();
+            self.handle_overflow();
+            self.update_suggestions();
+            self.run_validation();
+            return cursor_cmd;
+        }
+
         if let Msg::KeyPress(key) = msg {
             if self.key_map.delete_char_backward.matches(key) {
                 self.delete_before_cursor();

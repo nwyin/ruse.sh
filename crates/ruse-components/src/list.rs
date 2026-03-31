@@ -4,6 +4,8 @@ use ruse_runtime::{Cmd, KeyCode, Msg};
 use ruse_style::Style;
 
 use crate::key::Binding;
+use crate::paginator::Paginator;
+use crate::spinner::{dot_spinner, Spinner};
 use crate::textinput::TextInput;
 
 /// Represents the current filter state of a List.
@@ -121,6 +123,11 @@ pub struct List {
     status_message: Option<String>,
     status_message_lifetime: Duration,
     filter_state: FilterState,
+    spinner: Spinner,
+    pub show_spinner: bool,
+    #[allow(dead_code)]
+    paginator: Paginator,
+    pub show_paginator: bool,
 }
 
 impl List {
@@ -148,6 +155,10 @@ impl List {
             status_message: None,
             status_message_lifetime: Duration::from_secs(2),
             filter_state: FilterState::Unfiltered,
+            spinner: Spinner::new(dot_spinner()),
+            show_spinner: false,
+            paginator: Paginator::new(),
+            show_paginator: true,
         }
     }
 
@@ -209,7 +220,25 @@ impl List {
         self.status_message = None;
     }
 
+    /// Start the spinner animation (returns init Cmd).
+    pub fn start_spinner(&mut self) -> Cmd {
+        self.show_spinner = true;
+        self.spinner.init()
+    }
+
+    /// Stop the spinner animation.
+    pub fn stop_spinner(&mut self) {
+        self.show_spinner = false;
+    }
+
     pub fn update(&mut self, msg: &Msg) -> Cmd {
+        // Forward tick messages to spinner
+        if self.show_spinner
+            && let Some(cmd) = self.spinner.update(msg)
+        {
+            return Some(cmd);
+        }
+
         if self.filtering {
             return self.update_filtering(msg);
         }
@@ -259,6 +288,10 @@ impl List {
         // Filter input (when filtering)
         if self.filtering {
             out.push_str(&self.filter_input.view());
+            if self.show_spinner {
+                out.push(' ');
+                out.push_str(&self.spinner.view());
+            }
             out.push('\n');
             used_height += 1;
         } else if !self.filter_text.is_empty() && self.show_filter {
@@ -317,11 +350,18 @@ impl List {
             } else {
                 let total = self.items.len();
                 let filtered = self.filtered_indices.len();
-                if filtered == total {
+                let mut s = if filtered == total {
                     format!("{total} items")
                 } else {
                     format!("{filtered}/{total} items")
+                };
+                // Add paginator if items exceed visible area
+                if self.show_paginator && self.filtered_indices.len() > item_height && item_height > 0 {
+                    let total_pages = (self.filtered_indices.len() + item_height - 1) / item_height;
+                    let current_page = self.y_offset / item_height;
+                    s.push_str(&format!("  {}/{total_pages}", current_page + 1));
                 }
+                s
             };
             out.push_str(&self.styles.status_bar.render(&[&status]));
         }
