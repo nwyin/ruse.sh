@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bitflags::bitflags;
 use ruse_colorprofile::Color;
 
@@ -69,6 +71,8 @@ bitflags! {
         const INLINE            = 1 << 41;
         const UNDERLINE_STYLE   = 1 << 42;
         const UNDERLINE_COLOR   = 1 << 43;
+        const TRANSFORM         = 1 << 44;
+        const HYPERLINK         = 1 << 45;
     }
 }
 
@@ -86,7 +90,7 @@ const BOOL_ATTRS: Props = Props::BOLD
     .union(Props::INLINE);
 
 /// A composable terminal style. All builder methods consume and return `Self`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Style {
     /// Which properties have been explicitly set.
     pub(crate) props: Props,
@@ -137,6 +141,25 @@ pub struct Style {
 
     // Tab width
     pub(crate) tab_width: i8,
+
+    // Transform hook
+    pub(crate) transform: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
+
+    // Hyperlink
+    pub(crate) hyperlink: Option<String>,
+}
+
+impl std::fmt::Debug for Style {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Style")
+            .field("props", &self.props)
+            .field("attrs", &self.attrs)
+            .field("fg", &self.fg)
+            .field("bg", &self.bg)
+            .field("transform", &self.transform.as_ref().map(|_| ".."))
+            .field("hyperlink", &self.hyperlink)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Default for Style {
@@ -180,6 +203,8 @@ impl Style {
             align_v: Position::TOP,
             border_style: NO_BORDER,
             tab_width: 4,
+            transform: None,
+            hyperlink: None,
         }
     }
 
@@ -556,6 +581,20 @@ impl Style {
     pub fn tab_width(mut self, w: i8) -> Self {
         self.props |= Props::TAB_WIDTH;
         self.tab_width = w;
+        self
+    }
+
+    /// Set a post-render transform function.
+    pub fn transform(mut self, f: impl Fn(&str) -> String + Send + Sync + 'static) -> Self {
+        self.props |= Props::TRANSFORM;
+        self.transform = Some(Arc::new(f));
+        self
+    }
+
+    /// Set an OSC 8 hyperlink URL on the rendered text.
+    pub fn hyperlink(mut self, url: &str) -> Self {
+        self.props |= Props::HYPERLINK;
+        self.hyperlink = Some(url.to_string());
         self
     }
 

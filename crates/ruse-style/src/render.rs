@@ -187,6 +187,21 @@ impl Style {
             str = lines[..take].join("\n");
         }
 
+        // 13. Apply hyperlink (OSC 8)
+        if let Some(ref url) = self.hyperlink {
+            str = format!(
+                "{}{}{}",
+                ruse_ansi::hyperlink_open(url, ""),
+                str,
+                ruse_ansi::hyperlink_close(),
+            );
+        }
+
+        // 14. Apply transform
+        if let Some(ref f) = self.transform {
+            str = f(&str);
+        }
+
         str
     }
 
@@ -777,5 +792,30 @@ mod tests {
         let s = Style::new().set_underline_style(crate::style::UnderlineStyle::Dashed);
         let result = s.render(&["hi"]);
         assert!(result.contains("4:5"));
+    }
+
+    #[test]
+    fn test_render_transform() {
+        let s = Style::new().transform(|s| s.to_uppercase());
+        let result = s.render(&["hello"]);
+        assert_eq!(result, "HELLO");
+    }
+
+    #[test]
+    fn test_render_transform_with_style() {
+        let s = Style::new().bold(true).transform(|s| s.to_uppercase());
+        let result = s.render(&["hello"]);
+        // Transform applies to the entire rendered string including ANSI codes
+        let upper = result.to_uppercase();
+        assert_eq!(result, upper);
+    }
+
+    #[test]
+    fn test_render_hyperlink() {
+        let s = Style::new().hyperlink("https://example.com");
+        let result = s.render(&["click"]);
+        assert!(result.contains("\x1b]8;"));
+        assert!(result.contains("https://example.com"));
+        assert!(result.contains("click"));
     }
 }
