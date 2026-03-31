@@ -156,9 +156,7 @@ impl TextInput {
 
     pub fn set_value(&mut self, s: &str) {
         self.value = s.chars().collect();
-        if self.pos > self.value.len() {
-            self.pos = self.value.len();
-        }
+        self.pos = self.value.len();
         self.update_offset();
     }
 
