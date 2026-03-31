@@ -83,6 +83,12 @@ pub struct Screen {
     at_phantom: bool,
 }
 
+/// Result from parsing an ANSI escape — may request a cursor position change.
+#[derive(Default)]
+struct EscapeResult {
+    new_x: Option<usize>,
+}
+
 impl Screen {
     /// Create a new screen renderer.
     pub fn new(width: u16, height: u16) -> Self {
@@ -163,7 +169,11 @@ impl Screen {
 
             if b == b'\x1b' {
                 // Parse ANSI escape sequence
-                i = self.parse_escape(bytes, i, &mut current_style, &mut current_link);
+                let (new_i, esc_result) = self.parse_escape(bytes, i, &mut current_style, &mut current_link);
+                i = new_i;
+                if let Some(new_x) = esc_result.new_x {
+                    x = new_x.min(w);
+                }
                 continue;
             }
 
@@ -714,19 +724,20 @@ impl Screen {
     }
 
     /// Parse an ANSI escape sequence from bytes, updating style state.
-    /// Returns the new index position after the sequence.
+    /// Returns (new byte index, optional cursor command).
     fn parse_escape(
         &self,
         bytes: &[u8],
         start: usize,
         style: &mut CellStyle,
         link: &mut Link,
-    ) -> usize {
+    ) -> (usize, EscapeResult) {
         let len = bytes.len();
         let mut i = start + 1; // Skip ESC
+        let mut result = EscapeResult::default();
 
         if i >= len {
-            return i;
+            return (i, result);
         }
 
         match bytes[i] {
@@ -748,6 +759,11 @@ impl Screen {
                     if final_byte == b'm' {
                         // SGR sequence
                         self.parse_sgr(&bytes[params_start..i - 1], style);
+                    } else if final_byte == b'G' {
+                        // CHA — Cursor Horizontal Absolute: move to column n (1-based)
+                        let param_str = std::str::from_utf8(&bytes[params_start..i - 1]).unwrap_or("1");
+                        let col = param_str.parse::<usize>().unwrap_or(1);
+                        result.new_x = Some(col.saturating_sub(1)); // 1-based → 0-based
                     }
                 }
             }
@@ -777,7 +793,7 @@ impl Screen {
             }
         }
 
-        i
+        (i, result)
     }
 
     /// Parse SGR parameters and update cell style.
