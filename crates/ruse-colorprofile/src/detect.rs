@@ -128,6 +128,21 @@ fn env_color_profile(env: &HashMap<&str, &str>) -> Profile {
         return Profile::TrueColor;
     }
 
+    // ConEmu / Cmder (Windows)
+    if env.get("ConEmuANSI").is_some_and(|v| *v == "ON") {
+        if p < Profile::TrueColor {
+            p = Profile::TrueColor;
+        }
+    }
+
+    // TERM_PROGRAM-based detection (iTerm2, WezTerm, mintty, etc.)
+    if let Some(term_program) = env.get("TERM_PROGRAM").copied() {
+        let tp = term_program.to_lowercase();
+        if tp == "iterm.app" || tp == "wezterm" || tp == "hyper" || tp == "mintty" {
+            return Profile::TrueColor;
+        }
+    }
+
     // Google Cloud Shell
     if parse_bool(env.get("GOOGLE_CLOUD_SHELL").copied().unwrap_or("")) {
         return Profile::TrueColor;
@@ -351,6 +366,24 @@ mod tests {
     #[test]
     fn test_ghostty() {
         let p = Profile::from_env(&env_from(&[("TERM", "xterm-ghostty")]));
+        assert_eq!(p, Profile::TrueColor);
+    }
+
+    #[test]
+    fn test_conemu() {
+        let p = Profile::from_env(&env_from(&[("TERM", "xterm"), ("ConEmuANSI", "ON")]));
+        assert_eq!(p, Profile::TrueColor);
+    }
+
+    #[test]
+    fn test_term_program_iterm() {
+        let p = Profile::from_env(&env_from(&[("TERM", "xterm-256color"), ("TERM_PROGRAM", "iTerm.app")]));
+        assert_eq!(p, Profile::TrueColor);
+    }
+
+    #[test]
+    fn test_term_program_mintty() {
+        let p = Profile::from_env(&env_from(&[("TERM", "xterm"), ("TERM_PROGRAM", "mintty")]));
         assert_eq!(p, Profile::TrueColor);
     }
 

@@ -143,6 +143,14 @@ pub fn read_clipboard() -> Cmd {
     raw("\x1b]52;c;?\x07")
 }
 
+/// Command to set the Windows Terminal progress indicator via OSC 9;4.
+///
+/// `state`: 0 = hidden, 1 = default, 2 = error, 3 = indeterminate, 4 = warning.
+/// `progress`: 0–100 percentage.
+pub fn set_progress(state: u8, progress: u8) -> Cmd {
+    raw(format!("\x1b]9;4;{state};{progress}\x07"))
+}
+
 /// Simple base64 encoding (no external dependency needed).
 fn base64_encode(data: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
