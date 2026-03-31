@@ -82,6 +82,9 @@ pub struct Screen {
     syncd_updates: bool,
     /// Cursor is at phantom position (past right edge after writing last column).
     at_phantom: bool,
+    /// Skip scroll optimization (needed when using region-based rendering,
+    /// because CSI S/T scroll the entire terminal width).
+    no_scroll_optimize: bool,
 }
 
 /// Result from parsing an ANSI escape — may request a cursor position change.
@@ -110,12 +113,19 @@ impl Screen {
             force_clear: true, // First render should be full
             syncd_updates: false,
             at_phantom: false,
+            no_scroll_optimize: false,
         }
     }
 
     /// Set synchronized output mode (mode 2026).
     pub fn set_syncd_updates(&mut self, enabled: bool) {
         self.syncd_updates = enabled;
+    }
+
+    /// Disable scroll optimization (CSI S/T scroll the entire terminal width,
+    /// which corrupts region-based layouts where only part of a row should scroll).
+    pub fn set_scroll_optimize(&mut self, enabled: bool) {
+        self.no_scroll_optimize = !enabled;
     }
 
     pub fn set_options(&mut self, opts: ScreenOptions) {
@@ -189,7 +199,9 @@ impl Screen {
         } else {
             self.compute_hashes();
             self.match_lines();
-            self.scroll_optimize();
+            if !self.no_scroll_optimize {
+                self.scroll_optimize();
+            }
             self.render_changed_lines();
         }
 

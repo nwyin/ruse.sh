@@ -726,11 +726,16 @@ fn apply_view_state(
 /// Uses region-based drawing if regions are present, otherwise falls back to set_content.
 fn render_view(screen: &mut ruse_ansi::Screen, view: &View) {
     if !view.regions.is_empty() {
+        // Disable scroll optimization: CSI S/T scroll the entire terminal
+        // width, which corrupts multi-region layouts where only one region
+        // (e.g. chat) should scroll while another (e.g. sidebar) stays fixed.
+        screen.set_scroll_optimize(false);
         screen.buffer_mut().clear();
         for (rect, content) in &view.regions {
             screen.draw_region(content, *rect);
         }
     } else {
+        screen.set_scroll_optimize(true);
         screen.set_content(&view.content);
     }
 }
