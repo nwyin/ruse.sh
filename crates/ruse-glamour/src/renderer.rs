@@ -15,6 +15,9 @@ pub struct TermRenderer {
     syntax_set: SyntaxSet,
     theme_set: ThemeSet,
     syntax_theme: String,
+    emoji: bool,
+    sanitize_html: bool,
+    base_url: Option<String>,
 }
 
 /// Context for tracking rendering state inside block/inline elements.
@@ -49,6 +52,9 @@ impl TermRenderer {
             syntax_set: SyntaxSet::load_defaults_newlines(),
             theme_set: ThemeSet::load_defaults(),
             syntax_theme: "base16-ocean.dark".into(),
+            emoji: true,
+            sanitize_html: true,
+            base_url: None,
         }
     }
 
@@ -62,8 +68,32 @@ impl TermRenderer {
         self
     }
 
+    pub fn with_emoji(mut self, enable: bool) -> Self {
+        self.emoji = enable;
+        self
+    }
+
+    pub fn with_sanitize_html(mut self, enable: bool) -> Self {
+        self.sanitize_html = enable;
+        self
+    }
+
+    pub fn with_base_url(mut self, url: &str) -> Self {
+        self.base_url = Some(url.to_string());
+        self
+    }
+
     /// Render a markdown string to ANSI-styled terminal output.
     pub fn render(&self, markdown: &str) -> String {
+        // Pre-process emoji shortcodes if enabled
+        let processed;
+        let markdown = if self.emoji {
+            processed = replace_emoji_shortcodes(markdown);
+            &processed
+        } else {
+            markdown
+        };
+
         let options = Options::all();
         let parser = Parser::new_ext(markdown, options);
 
@@ -79,6 +109,7 @@ impl TermRenderer {
         let mut image_text_buf = String::new();
         let mut image_dest = String::new();
         let mut list_number: Option<u64> = None;
+        let mut list_depth: usize = 0;
 
         // Table state
         let mut in_table = false;
@@ -250,17 +281,23 @@ impl TermRenderer {
                 }
                 Event::Start(Tag::List(start)) => {
                     list_number = start;
+                    list_depth += 1;
                     stack.push(Context::List);
                 }
                 Event::End(TagEnd::List(_)) => {
                     stack.pop();
                     list_number = None;
-                    out.push('\n');
+                    list_depth = list_depth.saturating_sub(1);
+                    if list_depth == 0 {
+                        out.push('\n');
+                    }
                 }
                 Event::Start(Tag::Item) => {
                     stack.push(Context::Item);
                     let bq_indent = self.blockquote_indent(&stack);
-                    indent_line(&mut out, margin + bq_indent);
+                    let level_indent = self.style.list.level_indent.unwrap_or(2) as usize;
+                    let nest_indent = if list_depth > 1 { (list_depth - 1) * level_indent } else { 0 };
+                    indent_line(&mut out, margin + bq_indent + nest_indent);
 
                     if let Some(ref num) = list_number {
                         // Ordered list
@@ -302,7 +339,7 @@ impl TermRenderer {
                 }
                 Event::Start(Tag::Link { dest_url, .. }) => {
                     in_link = true;
-                    link_dest = dest_url.to_string();
+                    link_dest = self.resolve_url(&dest_url);
                     link_text_buf.clear();
                     stack.push(Context::Link);
                 }
@@ -325,7 +362,7 @@ impl TermRenderer {
                 }
                 Event::Start(Tag::Image { dest_url, .. }) => {
                     in_image = true;
-                    image_dest = dest_url.to_string();
+                    image_dest = self.resolve_url(&dest_url);
                     image_text_buf.clear();
                     stack.push(Context::Image);
                 }
@@ -336,7 +373,9 @@ impl TermRenderer {
                     let text_sgr = self.build_sgr(&self.style.image_text);
                     let img_sgr = self.build_sgr(&self.style.image);
 
-                    let label = if image_text_buf.is_empty() {
+                    let label = if let Some(ref fmt) = self.style.image_text.format {
+                        resolve_template(fmt, &[("text", &image_text_buf)])
+                    } else if image_text_buf.is_empty() {
                         "Image".to_string()
                     } else {
                         format!("Image: {}", image_text_buf)
@@ -487,8 +526,11 @@ impl TermRenderer {
                     out.push(']');
                 }
                 Event::Html(html) | Event::InlineHtml(html) => {
-                    // Render raw HTML as plain text
-                    out.push_str(&html);
+                    if self.sanitize_html {
+                        out.push_str(&ammonia::clean(&html));
+                    } else {
+                        out.push_str(&html);
+                    }
                 }
                 Event::InlineMath(math) => {
                     out.push('$');
@@ -822,6 +864,130 @@ fn indent_line(out: &mut String, n: usize) {
     }
 }
 
+impl TermRenderer {
+    /// Resolve a URL against the configured base_url, if any.
+    fn resolve_url(&self, url: &str) -> String {
+        if let Some(ref base) = self.base_url
+            && !url.starts_with("http://")
+            && !url.starts_with("https://")
+            && !url.starts_with("//")
+            && !url.starts_with('#')
+        {
+            let base = base.trim_end_matches('/');
+            return format!("{base}/{url}");
+        }
+        url.to_string()
+    }
+}
+
+/// Replace Go-style template variables like `{{.text}}` with values.
+fn resolve_template(format: &str, vars: &[(&str, &str)]) -> String {
+    let mut result = format.to_string();
+    for &(key, value) in vars {
+        result = result.replace(&format!("{{{{.{key}}}}}"), value);
+    }
+    result
+}
+
+/// Replace emoji shortcodes (`:rocket:` → 🚀) in markdown text,
+/// but skip content inside code spans and code blocks.
+fn replace_emoji_shortcodes(input: &str) -> String {
+    let mut result = String::with_capacity(input.len());
+    let mut chars = input.char_indices().peekable();
+    let bytes = input.as_bytes();
+
+    while let Some(&(i, ch)) = chars.peek() {
+        // Skip fenced code blocks (```)
+        if ch == '`' {
+            // Count consecutive backticks
+            let start = i;
+            let mut count = 0;
+            while let Some(&(_, '`')) = chars.peek() {
+                chars.next();
+                count += 1;
+            }
+            let fence = &input[start..start + count];
+            result.push_str(fence);
+
+            if count >= 3 {
+                // Fenced code block — skip until matching fence
+                loop {
+                    match chars.next() {
+                        None => break,
+                        Some((j, _)) => {
+                            // Check if we hit the closing fence
+                            if bytes[j] == b'`' {
+                                let mut close_count = 1;
+                                while let Some(&(_, '`')) = chars.peek() {
+                                    chars.next();
+                                    close_count += 1;
+                                }
+                                let close = &input[j..j + close_count];
+                                result.push_str(close);
+                                if close_count >= count {
+                                    break;
+                                }
+                            } else {
+                                result.push(input[j..].chars().next().unwrap());
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Inline code — skip until matching backtick(s)
+                loop {
+                    match chars.next() {
+                        None => break,
+                        Some((_j, c)) => {
+                            result.push(c);
+                            if c == '`' {
+                                let mut close_count = 1;
+                                while let Some(&(_, '`')) = chars.peek() {
+                                    chars.next();
+                                    close_count += 1;
+                                    result.push('`');
+                                }
+                                if close_count >= count {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+
+        // Try to match emoji shortcode :name:
+        if ch == ':' && i + 1 < input.len() {
+            // Look ahead for closing :
+            let rest = &input[i + 1..];
+            if let Some(end) = rest.find(':') {
+                let name = &rest[..end];
+                // Shortcodes are alphanumeric with underscores/hyphens/+
+                if !name.is_empty()
+                    && name.len() <= 50
+                    && name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '+')
+                    && let Some(emoji) = emojis::get_by_shortcode(name)
+                {
+                    result.push_str(emoji.as_str());
+                    // Advance past :name:
+                    chars.next(); // skip the opening :
+                    for _ in 0..end + 1 {
+                        chars.next();
+                    }
+                    continue;
+                }
+            }
+        }
+
+        result.push(ch);
+        chars.next();
+    }
+
+    result
+}
+
 /// Merge two StylePrimitives: child overrides parent (non-None fields win).
 fn merge_primitives(parent: &StylePrimitive, child: &StylePrimitive) -> StylePrimitive {
     StylePrimitive {
@@ -932,5 +1098,120 @@ mod tests {
         let prim: StylePrimitive = serde_json::from_str(json).unwrap();
         assert_eq!(prim.bold, Some(true));
         assert_eq!(prim.color.as_deref(), Some("#ff0000"));
+    }
+
+    #[test]
+    fn test_crossed_out_alias() {
+        let json = r#"{"crossed_out": true}"#;
+        let prim: StylePrimitive = serde_json::from_str(json).unwrap();
+        assert_eq!(prim.strikethrough, Some(true));
+    }
+
+    #[test]
+    fn test_emoji_replacement() {
+        let result = replace_emoji_shortcodes("Hello :rocket: world");
+        assert!(result.contains('\u{1F680}')); // 🚀
+        assert!(!result.contains(":rocket:"));
+    }
+
+    #[test]
+    fn test_emoji_unknown_unchanged() {
+        let result = replace_emoji_shortcodes("Hello :nonexistent_xyz: world");
+        assert!(result.contains(":nonexistent_xyz:"));
+    }
+
+    #[test]
+    fn test_emoji_in_inline_code_unchanged() {
+        let result = replace_emoji_shortcodes("Use `:rocket:` for emoji");
+        assert!(result.contains(":rocket:"));
+    }
+
+    #[test]
+    fn test_emoji_in_code_block_unchanged() {
+        let result = replace_emoji_shortcodes("```\n:rocket:\n```");
+        assert!(result.contains(":rocket:"));
+    }
+
+    #[test]
+    fn test_emoji_in_render() {
+        let style = dark_theme();
+        let r = TermRenderer::new(style).with_word_wrap(80);
+        let output = r.render("Hello :rocket: world\n");
+        let plain = ruse_ansi::strip_ansi(&output);
+        assert!(plain.contains('\u{1F680}'));
+    }
+
+    #[test]
+    fn test_html_sanitization() {
+        let style = dark_theme();
+        let r = TermRenderer::new(style);
+        let md = "<script>alert('x')</script>Hello\n";
+        let output = r.render(md);
+        let plain = ruse_ansi::strip_ansi(&output);
+        assert!(!plain.contains("<script>"));
+        assert!(plain.contains("Hello"));
+    }
+
+    #[test]
+    fn test_html_sanitization_disabled() {
+        let style = dark_theme();
+        let r = TermRenderer::new(style).with_sanitize_html(false);
+        let md = "<b>bold</b>\n";
+        let output = r.render(md);
+        assert!(output.contains("<b>"));
+    }
+
+    #[test]
+    fn test_resolve_template() {
+        let result = resolve_template("Image: {{.text}} →", &[("text", "photo")]);
+        assert_eq!(result, "Image: photo →");
+    }
+
+    #[test]
+    fn test_base_url_resolution() {
+        let style = dark_theme();
+        let r = TermRenderer::new(style).with_base_url("https://example.com/docs");
+        let md = "[link](./readme.md)\n";
+        let output = r.render(md);
+        let plain = ruse_ansi::strip_ansi(&output);
+        assert!(plain.contains("https://example.com/docs/./readme.md"));
+    }
+
+    #[test]
+    fn test_base_url_absolute_unchanged() {
+        let style = dark_theme();
+        let r = TermRenderer::new(style).with_base_url("https://example.com");
+        let md = "[link](https://other.com/page)\n";
+        let output = r.render(md);
+        let plain = ruse_ansi::strip_ansi(&output);
+        assert!(plain.contains("https://other.com/page"));
+    }
+
+    #[test]
+    fn test_nested_list_indentation() {
+        let mut style = dark_theme();
+        style.list.level_indent = Some(4);
+        let r = TermRenderer::new(style);
+        let md = "- one\n  - two\n    - three\n";
+        let output = r.render(md);
+        let plain = ruse_ansi::strip_ansi(&output);
+        assert!(plain.contains("one"));
+        assert!(plain.contains("two"));
+        assert!(plain.contains("three"));
+    }
+
+    #[test]
+    fn test_get_theme_new_themes() {
+        use crate::themes::get_theme;
+        let _ = get_theme("ascii");
+        let _ = get_theme("notty");
+        let _ = get_theme("pink");
+    }
+
+    #[test]
+    fn test_pink_theme_heading_color() {
+        use crate::themes::pink_theme;
+        let theme = pink_theme();
+        assert_eq!(theme.heading.color.as_deref(), Some("212"));
     }
 }

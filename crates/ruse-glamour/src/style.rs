@@ -11,6 +11,7 @@ pub struct StylePrimitive {
     pub bold: Option<bool>,
     pub italic: Option<bool>,
     pub underline: Option<bool>,
+    #[serde(alias = "crossed_out")]
     pub strikethrough: Option<bool>,
     pub faint: Option<bool>,
     pub inverse: Option<bool>,
@@ -22,6 +23,13 @@ pub struct StylePrimitive {
     pub format: Option<String>,
 }
 
+/// List styling with level indentation.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct StyleList {
+    pub level_indent: Option<u32>,
+}
+
 /// Style configuration for the entire markdown document.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
@@ -29,6 +37,7 @@ pub struct StyleConfig {
     pub document: StylePrimitive,
     pub block_quote: StylePrimitive,
     pub paragraph: StylePrimitive,
+    pub list: StyleList,
     pub heading: StylePrimitive,
     pub h1: StylePrimitive,
     pub h2: StylePrimitive,
