@@ -296,7 +296,11 @@ impl TermRenderer {
                     stack.push(Context::Item);
                     let bq_indent = self.blockquote_indent(&stack);
                     let level_indent = self.style.list.level_indent.unwrap_or(2) as usize;
-                    let nest_indent = if list_depth > 1 { (list_depth - 1) * level_indent } else { 0 };
+                    let nest_indent = if list_depth > 1 {
+                        (list_depth - 1) * level_indent
+                    } else {
+                        0
+                    };
                     indent_line(&mut out, margin + bq_indent + nest_indent);
 
                     if let Some(ref num) = list_number {
@@ -428,7 +432,8 @@ impl TermRenderer {
                 Event::End(TagEnd::HtmlBlock) => {
                     stack.pop();
                 }
-                Event::Start(Tag::FootnoteDefinition(_)) | Event::End(TagEnd::FootnoteDefinition) => {
+                Event::Start(Tag::FootnoteDefinition(_))
+                | Event::End(TagEnd::FootnoteDefinition) => {
                     // Footnotes: minimal handling
                 }
                 Event::Start(Tag::MetadataBlock(_)) | Event::End(TagEnd::MetadataBlock(_)) => {
@@ -457,8 +462,16 @@ impl TermRenderer {
                     }
                     if bq_indent > 0 && (out.is_empty() || out.ends_with('\n')) {
                         indent_line(&mut out, margin);
-                        let token = self.style.block_quote.indent_token.as_deref().unwrap_or("  ");
-                        let bq_depth = stack.iter().filter(|c| matches!(c, Context::BlockQuote)).count();
+                        let token = self
+                            .style
+                            .block_quote
+                            .indent_token
+                            .as_deref()
+                            .unwrap_or("  ");
+                        let bq_depth = stack
+                            .iter()
+                            .filter(|c| matches!(c, Context::BlockQuote))
+                            .count();
                         for _ in 0..bq_depth {
                             out.push_str(token);
                         }
@@ -615,7 +628,10 @@ impl TermRenderer {
 
     /// Compute block-quote indentation depth from the context stack.
     fn blockquote_indent(&self, stack: &[Context]) -> usize {
-        let depth = stack.iter().filter(|c| matches!(c, Context::BlockQuote)).count();
+        let depth = stack
+            .iter()
+            .filter(|c| matches!(c, Context::BlockQuote))
+            .count();
         let per_level = self.style.block_quote.indent.unwrap_or(1) as usize;
         let token_width = self
             .style
@@ -799,7 +815,11 @@ impl TermRenderer {
             indent_line(out, margin);
             out.push_str(col_sep);
             for (i, cell) in row.iter().enumerate() {
-                let width = if i < num_cols { col_widths[i] } else { cell.len() };
+                let width = if i < num_cols {
+                    col_widths[i]
+                } else {
+                    cell.len()
+                };
                 out.push(' ');
                 out.push_str(cell);
                 // Pad
@@ -825,9 +845,10 @@ impl TermRenderer {
 /// Supports: "#rrggbb", a decimal 256-color index, or a named ANSI color.
 fn apply_fg_color(sgr: SgrStyle, color: &str) -> SgrStyle {
     if let Some(hex) = color.strip_prefix('#')
-        && let Some((r, g, b)) = parse_hex_rgb(hex) {
-            return sgr.fg_rgb(r, g, b);
-        }
+        && let Some((r, g, b)) = parse_hex_rgb(hex)
+    {
+        return sgr.fg_rgb(r, g, b);
+    }
     if let Ok(n) = color.parse::<u8>() {
         return sgr.fg_256(n);
     }
@@ -838,9 +859,10 @@ fn apply_fg_color(sgr: SgrStyle, color: &str) -> SgrStyle {
 /// Parse a color string and apply it as a background color on the SgrStyle.
 fn apply_bg_color(sgr: SgrStyle, color: &str) -> SgrStyle {
     if let Some(hex) = color.strip_prefix('#')
-        && let Some((r, g, b)) = parse_hex_rgb(hex) {
-            return sgr.bg_rgb(r, g, b);
-        }
+        && let Some((r, g, b)) = parse_hex_rgb(hex)
+    {
+        return sgr.bg_rgb(r, g, b);
+    }
     if let Ok(n) = color.parse::<u8>() {
         return sgr.bg_256(n);
     }
@@ -968,7 +990,9 @@ fn replace_emoji_shortcodes(input: &str) -> String {
                 // Shortcodes are alphanumeric with underscores/hyphens/+
                 if !name.is_empty()
                     && name.len() <= 50
-                    && name.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '+')
+                    && name
+                        .chars()
+                        .all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '+')
                     && let Some(emoji) = emojis::get_by_shortcode(name)
                 {
                     result.push_str(emoji.as_str());
@@ -995,17 +1019,29 @@ fn merge_primitives(parent: &StylePrimitive, child: &StylePrimitive) -> StylePri
         prefix: child.prefix.clone().or_else(|| parent.prefix.clone()),
         suffix: child.suffix.clone().or_else(|| parent.suffix.clone()),
         color: child.color.clone().or_else(|| parent.color.clone()),
-        background_color: child.background_color.clone().or_else(|| parent.background_color.clone()),
+        background_color: child
+            .background_color
+            .clone()
+            .or_else(|| parent.background_color.clone()),
         bold: child.bold.or(parent.bold),
         italic: child.italic.or(parent.italic),
         underline: child.underline.or(parent.underline),
         strikethrough: child.strikethrough.or(parent.strikethrough),
         faint: child.faint.or(parent.faint),
         inverse: child.inverse.or(parent.inverse),
-        block_prefix: child.block_prefix.clone().or_else(|| parent.block_prefix.clone()),
-        block_suffix: child.block_suffix.clone().or_else(|| parent.block_suffix.clone()),
+        block_prefix: child
+            .block_prefix
+            .clone()
+            .or_else(|| parent.block_prefix.clone()),
+        block_suffix: child
+            .block_suffix
+            .clone()
+            .or_else(|| parent.block_suffix.clone()),
         indent: child.indent.or(parent.indent),
-        indent_token: child.indent_token.clone().or_else(|| parent.indent_token.clone()),
+        indent_token: child
+            .indent_token
+            .clone()
+            .or_else(|| parent.indent_token.clone()),
         margin: child.margin.or(parent.margin),
         format: child.format.clone().or_else(|| parent.format.clone()),
     }

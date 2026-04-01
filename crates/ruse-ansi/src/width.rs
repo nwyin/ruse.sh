@@ -10,18 +10,12 @@ use crate::strip::strip_ansi;
 /// width calculation (e.g., CJK characters count as 2 columns).
 pub fn string_width(s: &str) -> usize {
     let stripped = strip_ansi(s);
-    stripped
-        .lines()
-        .map(|line| grapheme_width(line))
-        .max()
-        .unwrap_or(0)
+    stripped.lines().map(grapheme_width).max().unwrap_or(0)
 }
 
 /// Calculate visual width of a single line using grapheme clusters.
 pub fn grapheme_width(s: &str) -> usize {
-    s.graphemes(true)
-        .map(|g| UnicodeWidthStr::width(g))
-        .sum()
+    s.graphemes(true).map(UnicodeWidthStr::width).sum()
 }
 
 /// Count the number of visual lines in a string.

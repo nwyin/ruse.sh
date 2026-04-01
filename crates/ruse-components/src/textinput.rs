@@ -31,8 +31,16 @@ impl Default for TextInputKeyMap {
         Self {
             char_forward: Binding::new(&["right", "ctrl+f"], "→", "forward"),
             char_backward: Binding::new(&["left", "ctrl+b"], "←", "backward"),
-            word_forward: Binding::new(&["alt+right", "ctrl+right", "alt+f"], "alt+→", "word forward"),
-            word_backward: Binding::new(&["alt+left", "ctrl+left", "alt+b"], "alt+←", "word backward"),
+            word_forward: Binding::new(
+                &["alt+right", "ctrl+right", "alt+f"],
+                "alt+→",
+                "word forward",
+            ),
+            word_backward: Binding::new(
+                &["alt+left", "ctrl+left", "alt+b"],
+                "alt+←",
+                "word backward",
+            ),
             delete_char_backward: Binding::new(&["backspace"], "bksp", "delete char"),
             delete_char_forward: Binding::new(&["delete"], "del", "delete char forward"),
             delete_word_backward: Binding::new(&["ctrl+w"], "ctrl+w", "delete word"),
@@ -66,6 +74,7 @@ pub struct TextInput {
     matched_suggestions: Vec<String>,
     current_suggestion_idx: usize,
     show_suggestions: bool,
+    #[allow(clippy::type_complexity)]
     validate: Option<Box<dyn Fn(&str) -> Result<(), String> + Send>>,
     validation_err: Option<String>,
 }
@@ -233,7 +242,9 @@ impl TextInput {
                 self.delete_to_end();
             } else if let KeyCode::Char(ch) = key.code {
                 // Insert normal characters (no modifiers except shift)
-                if !key.modifiers.contains(Modifiers::CTRL) && !key.modifiers.contains(Modifiers::ALT) {
+                if !key.modifiers.contains(Modifiers::CTRL)
+                    && !key.modifiers.contains(Modifiers::ALT)
+                {
                     self.insert_char(ch);
                 }
             }

@@ -10,8 +10,8 @@ pub mod view;
 
 // Re-export primary types
 pub use cmd::{
-    batch, clear_screen, cmd, cmd_async, every, exec, println, quit, raw, read_clipboard,
-    sequence, set_clipboard, set_progress, tick, Cmd, CmdInner,
+    Cmd, CmdInner, batch, clear_screen, cmd, cmd_async, every, exec, println, quit, raw,
+    read_clipboard, sequence, set_clipboard, set_progress, tick,
 };
 pub use error::ProgramError;
 pub use key::{KeyCode, KeyEvent, Modifiers};

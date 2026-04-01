@@ -173,7 +173,11 @@ mod tests {
 
         let pos = proj.position();
         // Under terminal gravity (positive y), y should increase.
-        assert!(pos.y > 0.0, "y={}, expected > 0.0 under terminal gravity", pos.y);
+        assert!(
+            pos.y > 0.0,
+            "y={}, expected > 0.0 under terminal gravity",
+            pos.y
+        );
     }
 
     #[test]

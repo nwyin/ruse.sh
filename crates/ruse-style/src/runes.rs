@@ -23,7 +23,12 @@ pub struct StyleRange {
 ///
 /// Indexing is based on the ANSI-stripped version of `text` so that
 /// any pre-existing escape sequences do not affect character positions.
-pub fn style_runes(text: &str, indices: &[usize], matched_style: &Style, unmatched_style: &Style) -> String {
+pub fn style_runes(
+    text: &str,
+    indices: &[usize],
+    matched_style: &Style,
+    unmatched_style: &Style,
+) -> String {
     let plain = strip_ansi(text);
     if plain.is_empty() {
         return String::new();
@@ -45,7 +50,11 @@ pub fn style_runes(text: &str, indices: &[usize], matched_style: &Style, unmatch
             i += 1;
         }
         let segment: String = chars[group_start..i].iter().collect();
-        let sgr = if is_match { &matched_sgr } else { &unmatched_sgr };
+        let sgr = if is_match {
+            &matched_sgr
+        } else {
+            &unmatched_sgr
+        };
         result.push_str(&sgr.styled(&segment));
     }
 

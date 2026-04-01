@@ -31,31 +31,29 @@ pub mod prelude {
         Msg, Program, ProgramError, Rect, View,
     };
     pub use ruse_runtime::{
-        batch, clear_screen, cmd, cmd_async, every, exec, println, quit, raw, read_clipboard,
-        sequence, set_clipboard, tick, ProgramHandle,
+        ProgramHandle, batch, clear_screen, cmd, cmd_async, every, exec, println, quit, raw,
+        read_clipboard, sequence, set_clipboard, tick,
     };
 
     // Styling
     pub use ruse_style::{
-        Color, Position, Style, Border, UnderlineStyle,
-        NORMAL_BORDER, ROUNDED_BORDER, BLOCK_BORDER, DOUBLE_BORDER, THICK_BORDER,
-        HIDDEN_BORDER, ASCII_BORDER,
+        ASCII_BORDER, BLOCK_BORDER, Border, Color, DOUBLE_BORDER, HIDDEN_BORDER, NORMAL_BORDER,
+        Position, ROUNDED_BORDER, Style, THICK_BORDER, UnderlineStyle,
     };
     pub use ruse_style::{
-        join_horizontal, join_vertical, place, place_horizontal, place_vertical,
-        style_runes, style_ranges, StyleRange,
-        blend_1d, blend_2d, light_dark, complete, darken, lighten, complementary, is_dark,
-        Tree, Enumerator, Layer, Compositor, Whitespace,
+        Compositor, Enumerator, Layer, StyleRange, Tree, Whitespace, blend_1d, blend_2d,
+        complementary, complete, darken, is_dark, join_horizontal, join_vertical, light_dark,
+        lighten, place, place_horizontal, place_vertical, style_ranges, style_runes,
     };
 
     // Components
     pub use ruse_components::{
-        Binding, Cursor, CursorMode, FilePicker, Help, KeyMap, List, ListItem, Paginator,
-        Progress, SimpleItem, Spinner, Stopwatch, TextArea, TextInput, Timer, Viewport,
+        Binding, Cursor, CursorMode, FilePicker, Help, KeyMap, List, ListItem, Paginator, Progress,
+        SimpleItem, Spinner, Stopwatch, TextArea, TextInput, Timer, Viewport,
     };
     pub use ruse_components::{
-        dot_spinner, ellipsis_spinner, globe_spinner, line_spinner, mini_dot_spinner,
-        moon_spinner, pulse_spinner, jump_spinner, points_spinner, monkey_spinner,
-        meter_spinner, hamburger_spinner,
+        dot_spinner, ellipsis_spinner, globe_spinner, hamburger_spinner, jump_spinner,
+        line_spinner, meter_spinner, mini_dot_spinner, monkey_spinner, moon_spinner,
+        points_spinner, pulse_spinner,
     };
 }

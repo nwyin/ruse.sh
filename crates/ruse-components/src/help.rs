@@ -62,7 +62,11 @@ impl Help {
             let part = format!("{key} {desc}");
 
             let part_width = ruse_ansi::string_width(&part);
-            let sep_width = if parts.is_empty() { 0 } else { ruse_ansi::string_width(&self.short_separator) };
+            let sep_width = if parts.is_empty() {
+                0
+            } else {
+                ruse_ansi::string_width(&self.short_separator)
+            };
 
             if !parts.is_empty() && total_width + sep_width + part_width > self.width {
                 break;
@@ -143,8 +147,8 @@ impl Help {
             }
             // Check if the row exceeds the configured width; if so, stop
             // (we still include the current row for completeness).
-            let row_width: usize = col_widths.iter().sum::<usize>()
-                + (col_lines.len().saturating_sub(1)) * sep_width;
+            let row_width: usize =
+                col_widths.iter().sum::<usize>() + (col_lines.len().saturating_sub(1)) * sep_width;
             let _ = row_width; // available for future truncation
         }
 

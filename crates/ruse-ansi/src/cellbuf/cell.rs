@@ -73,7 +73,11 @@ impl Cell {
 
     /// Whether this cell is a blank space with default style.
     pub fn is_blank(&self) -> bool {
-        self.rune == ' ' && self.width == 1 && self.comb.is_empty() && self.style.is_empty() && self.link.is_empty()
+        self.rune == ' '
+            && self.width == 1
+            && self.comb.is_empty()
+            && self.style.is_empty()
+            && self.link.is_empty()
     }
 
     /// Whether this cell can be treated as visually clear

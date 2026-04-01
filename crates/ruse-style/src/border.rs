@@ -41,86 +41,86 @@ pub const NO_BORDER: Border = Border {
 
 /// Standard box-drawing border with 90-degree corners.
 pub const NORMAL_BORDER: Border = Border {
-    top: "\u{2500}",          // ─
-    bottom: "\u{2500}",       // ─
-    left: "\u{2502}",         // │
-    right: "\u{2502}",        // │
-    top_left: "\u{250C}",     // ┌
-    top_right: "\u{2510}",    // ┐
-    bottom_left: "\u{2514}",  // └
-    bottom_right: "\u{2518}", // ┘
-    middle_left: "\u{251C}",  // ├
-    middle_right: "\u{2524}", // ┤
-    middle: "\u{253C}",       // ┼
-    middle_top: "\u{252C}",   // ┬
+    top: "\u{2500}",           // ─
+    bottom: "\u{2500}",        // ─
+    left: "\u{2502}",          // │
+    right: "\u{2502}",         // │
+    top_left: "\u{250C}",      // ┌
+    top_right: "\u{2510}",     // ┐
+    bottom_left: "\u{2514}",   // └
+    bottom_right: "\u{2518}",  // ┘
+    middle_left: "\u{251C}",   // ├
+    middle_right: "\u{2524}",  // ┤
+    middle: "\u{253C}",        // ┼
+    middle_top: "\u{252C}",    // ┬
     middle_bottom: "\u{2534}", // ┴
 };
 
 /// Border with rounded corners.
 pub const ROUNDED_BORDER: Border = Border {
-    top: "\u{2500}",          // ─
-    bottom: "\u{2500}",       // ─
-    left: "\u{2502}",         // │
-    right: "\u{2502}",        // │
-    top_left: "\u{256D}",     // ╭
-    top_right: "\u{256E}",    // ╮
-    bottom_left: "\u{2570}",  // ╰
-    bottom_right: "\u{256F}", // ╯
-    middle_left: "\u{251C}",  // ├
-    middle_right: "\u{2524}", // ┤
-    middle: "\u{253C}",       // ┼
-    middle_top: "\u{252C}",   // ┬
+    top: "\u{2500}",           // ─
+    bottom: "\u{2500}",        // ─
+    left: "\u{2502}",          // │
+    right: "\u{2502}",         // │
+    top_left: "\u{256D}",      // ╭
+    top_right: "\u{256E}",     // ╮
+    bottom_left: "\u{2570}",   // ╰
+    bottom_right: "\u{256F}",  // ╯
+    middle_left: "\u{251C}",   // ├
+    middle_right: "\u{2524}",  // ┤
+    middle: "\u{253C}",        // ┼
+    middle_top: "\u{252C}",    // ┬
     middle_bottom: "\u{2534}", // ┴
 };
 
 /// Full block border.
 pub const BLOCK_BORDER: Border = Border {
-    top: "\u{2588}",          // █
-    bottom: "\u{2588}",       // █
-    left: "\u{2588}",         // █
-    right: "\u{2588}",        // █
-    top_left: "\u{2588}",     // █
-    top_right: "\u{2588}",    // █
-    bottom_left: "\u{2588}",  // █
-    bottom_right: "\u{2588}", // █
-    middle_left: "\u{2588}",  // █
-    middle_right: "\u{2588}", // █
-    middle: "\u{2588}",       // █
-    middle_top: "\u{2588}",   // █
+    top: "\u{2588}",           // █
+    bottom: "\u{2588}",        // █
+    left: "\u{2588}",          // █
+    right: "\u{2588}",         // █
+    top_left: "\u{2588}",      // █
+    top_right: "\u{2588}",     // █
+    bottom_left: "\u{2588}",   // █
+    bottom_right: "\u{2588}",  // █
+    middle_left: "\u{2588}",   // █
+    middle_right: "\u{2588}",  // █
+    middle: "\u{2588}",        // █
+    middle_top: "\u{2588}",    // █
     middle_bottom: "\u{2588}", // █
 };
 
 /// Thick box-drawing border.
 pub const THICK_BORDER: Border = Border {
-    top: "\u{2501}",          // ━
-    bottom: "\u{2501}",       // ━
-    left: "\u{2503}",         // ┃
-    right: "\u{2503}",        // ┃
-    top_left: "\u{250F}",     // ┏
-    top_right: "\u{2513}",    // ┓
-    bottom_left: "\u{2517}",  // ┗
-    bottom_right: "\u{251B}", // ┛
-    middle_left: "\u{2523}",  // ┣
-    middle_right: "\u{252B}", // ┫
-    middle: "\u{254B}",       // ╋
-    middle_top: "\u{2533}",   // ┳
+    top: "\u{2501}",           // ━
+    bottom: "\u{2501}",        // ━
+    left: "\u{2503}",          // ┃
+    right: "\u{2503}",         // ┃
+    top_left: "\u{250F}",      // ┏
+    top_right: "\u{2513}",     // ┓
+    bottom_left: "\u{2517}",   // ┗
+    bottom_right: "\u{251B}",  // ┛
+    middle_left: "\u{2523}",   // ┣
+    middle_right: "\u{252B}",  // ┫
+    middle: "\u{254B}",        // ╋
+    middle_top: "\u{2533}",    // ┳
     middle_bottom: "\u{253B}", // ┻
 };
 
 /// Double-line border.
 pub const DOUBLE_BORDER: Border = Border {
-    top: "\u{2550}",          // ═
-    bottom: "\u{2550}",       // ═
-    left: "\u{2551}",         // ║
-    right: "\u{2551}",        // ║
-    top_left: "\u{2554}",     // ╔
-    top_right: "\u{2557}",    // ╗
-    bottom_left: "\u{255A}",  // ╚
-    bottom_right: "\u{255D}", // ╝
-    middle_left: "\u{2560}",  // ╠
-    middle_right: "\u{2563}", // ╣
-    middle: "\u{256C}",       // ╬
-    middle_top: "\u{2566}",   // ╦
+    top: "\u{2550}",           // ═
+    bottom: "\u{2550}",        // ═
+    left: "\u{2551}",          // ║
+    right: "\u{2551}",         // ║
+    top_left: "\u{2554}",      // ╔
+    top_right: "\u{2557}",     // ╗
+    bottom_left: "\u{255A}",   // ╚
+    bottom_right: "\u{255D}",  // ╝
+    middle_left: "\u{2560}",   // ╠
+    middle_right: "\u{2563}",  // ╣
+    middle: "\u{256C}",        // ╬
+    middle_top: "\u{2566}",    // ╦
     middle_bottom: "\u{2569}", // ╩
 };
 

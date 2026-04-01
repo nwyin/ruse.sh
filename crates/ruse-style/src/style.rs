@@ -143,6 +143,7 @@ pub struct Style {
     pub(crate) tab_width: i8,
 
     // Transform hook
+    #[allow(clippy::type_complexity)]
     pub(crate) transform: Option<Arc<dyn Fn(&str) -> String + Send + Sync>>,
 
     // Hyperlink
@@ -705,78 +706,351 @@ impl Style {
 
     // --- getters ---
 
-    pub fn get_bold(&self) -> bool { self.get_bool(Props::BOLD) }
-    pub fn get_italic(&self) -> bool { self.get_bool(Props::ITALIC) }
-    pub fn get_underline(&self) -> bool { self.get_bool(Props::UNDERLINE) }
-    pub fn get_strikethrough(&self) -> bool { self.get_bool(Props::STRIKETHROUGH) }
-    pub fn get_reverse(&self) -> bool { self.get_bool(Props::REVERSE) }
-    pub fn get_blink(&self) -> bool { self.get_bool(Props::BLINK) }
-    pub fn get_faint(&self) -> bool { self.get_bool(Props::FAINT) }
-    pub fn get_underline_spaces(&self) -> bool { self.get_bool(Props::UNDERLINE_SPACES) }
-    pub fn get_strikethrough_spaces(&self) -> bool { self.get_bool(Props::STRIKETHROUGH_SPACES) }
-    pub fn get_inline(&self) -> bool { self.get_bool(Props::INLINE) }
-    pub fn get_foreground(&self) -> Color { if self.is_set(Props::FOREGROUND) { self.fg } else { Color::NoColor } }
-    pub fn get_background(&self) -> Color { if self.is_set(Props::BACKGROUND) { self.bg } else { Color::NoColor } }
-    pub fn get_margin_background(&self) -> Color { if self.is_set(Props::MARGIN_BG) { self.margin_bg } else { Color::NoColor } }
-    pub fn get_underline_style(&self) -> UnderlineStyle { if self.is_set(Props::UNDERLINE_STYLE) { self.underline_style } else { UnderlineStyle::None } }
-    pub fn get_underline_color(&self) -> Color { if self.is_set(Props::UNDERLINE_COLOR) { self.underline_color } else { Color::NoColor } }
-    pub fn get_width(&self) -> u16 { if self.is_set(Props::WIDTH) { self.width } else { 0 } }
-    pub fn get_height(&self) -> u16 { if self.is_set(Props::HEIGHT) { self.height } else { 0 } }
-    pub fn get_max_width(&self) -> u16 { if self.is_set(Props::MAX_WIDTH) { self.max_width } else { 0 } }
-    pub fn get_max_height(&self) -> u16 { if self.is_set(Props::MAX_HEIGHT) { self.max_height } else { 0 } }
-    pub fn get_padding_top(&self) -> u16 { if self.is_set(Props::PADDING_TOP) { self.padding_top } else { 0 } }
-    pub fn get_padding_right(&self) -> u16 { if self.is_set(Props::PADDING_RIGHT) { self.padding_right } else { 0 } }
-    pub fn get_padding_bottom(&self) -> u16 { if self.is_set(Props::PADDING_BOTTOM) { self.padding_bottom } else { 0 } }
-    pub fn get_padding_left(&self) -> u16 { if self.is_set(Props::PADDING_LEFT) { self.padding_left } else { 0 } }
-    pub fn get_margin_top(&self) -> u16 { if self.is_set(Props::MARGIN_TOP) { self.margin_top } else { 0 } }
-    pub fn get_margin_right(&self) -> u16 { if self.is_set(Props::MARGIN_RIGHT) { self.margin_right } else { 0 } }
-    pub fn get_margin_bottom(&self) -> u16 { if self.is_set(Props::MARGIN_BOTTOM) { self.margin_bottom } else { 0 } }
-    pub fn get_margin_left(&self) -> u16 { if self.is_set(Props::MARGIN_LEFT) { self.margin_left } else { 0 } }
-    pub fn get_align_horizontal(&self) -> Position { if self.is_set(Props::ALIGN_H) { self.align_h } else { Position::LEFT } }
-    pub fn get_align_vertical(&self) -> Position { if self.is_set(Props::ALIGN_V) { self.align_v } else { Position::TOP } }
-    pub fn get_border_style(&self) -> &Border { &self.border_style }
-    pub fn get_border_top_foreground(&self) -> Color { if self.is_set(Props::BORDER_TOP_FG) { self.border_top_fg } else { Color::NoColor } }
-    pub fn get_border_right_foreground(&self) -> Color { if self.is_set(Props::BORDER_RIGHT_FG) { self.border_right_fg } else { Color::NoColor } }
-    pub fn get_border_bottom_foreground(&self) -> Color { if self.is_set(Props::BORDER_BOTTOM_FG) { self.border_bottom_fg } else { Color::NoColor } }
-    pub fn get_border_left_foreground(&self) -> Color { if self.is_set(Props::BORDER_LEFT_FG) { self.border_left_fg } else { Color::NoColor } }
-    pub fn get_border_top_background(&self) -> Color { if self.is_set(Props::BORDER_TOP_BG) { self.border_top_bg } else { Color::NoColor } }
-    pub fn get_border_right_background(&self) -> Color { if self.is_set(Props::BORDER_RIGHT_BG) { self.border_right_bg } else { Color::NoColor } }
-    pub fn get_border_bottom_background(&self) -> Color { if self.is_set(Props::BORDER_BOTTOM_BG) { self.border_bottom_bg } else { Color::NoColor } }
-    pub fn get_border_left_background(&self) -> Color { if self.is_set(Props::BORDER_LEFT_BG) { self.border_left_bg } else { Color::NoColor } }
-    pub fn get_tab_width(&self) -> i8 { if self.is_set(Props::TAB_WIDTH) { self.tab_width } else { 4 } }
+    pub fn get_bold(&self) -> bool {
+        self.get_bool(Props::BOLD)
+    }
+    pub fn get_italic(&self) -> bool {
+        self.get_bool(Props::ITALIC)
+    }
+    pub fn get_underline(&self) -> bool {
+        self.get_bool(Props::UNDERLINE)
+    }
+    pub fn get_strikethrough(&self) -> bool {
+        self.get_bool(Props::STRIKETHROUGH)
+    }
+    pub fn get_reverse(&self) -> bool {
+        self.get_bool(Props::REVERSE)
+    }
+    pub fn get_blink(&self) -> bool {
+        self.get_bool(Props::BLINK)
+    }
+    pub fn get_faint(&self) -> bool {
+        self.get_bool(Props::FAINT)
+    }
+    pub fn get_underline_spaces(&self) -> bool {
+        self.get_bool(Props::UNDERLINE_SPACES)
+    }
+    pub fn get_strikethrough_spaces(&self) -> bool {
+        self.get_bool(Props::STRIKETHROUGH_SPACES)
+    }
+    pub fn get_inline(&self) -> bool {
+        self.get_bool(Props::INLINE)
+    }
+    pub fn get_foreground(&self) -> Color {
+        if self.is_set(Props::FOREGROUND) {
+            self.fg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_background(&self) -> Color {
+        if self.is_set(Props::BACKGROUND) {
+            self.bg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_margin_background(&self) -> Color {
+        if self.is_set(Props::MARGIN_BG) {
+            self.margin_bg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_underline_style(&self) -> UnderlineStyle {
+        if self.is_set(Props::UNDERLINE_STYLE) {
+            self.underline_style
+        } else {
+            UnderlineStyle::None
+        }
+    }
+    pub fn get_underline_color(&self) -> Color {
+        if self.is_set(Props::UNDERLINE_COLOR) {
+            self.underline_color
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_width(&self) -> u16 {
+        if self.is_set(Props::WIDTH) {
+            self.width
+        } else {
+            0
+        }
+    }
+    pub fn get_height(&self) -> u16 {
+        if self.is_set(Props::HEIGHT) {
+            self.height
+        } else {
+            0
+        }
+    }
+    pub fn get_max_width(&self) -> u16 {
+        if self.is_set(Props::MAX_WIDTH) {
+            self.max_width
+        } else {
+            0
+        }
+    }
+    pub fn get_max_height(&self) -> u16 {
+        if self.is_set(Props::MAX_HEIGHT) {
+            self.max_height
+        } else {
+            0
+        }
+    }
+    pub fn get_padding_top(&self) -> u16 {
+        if self.is_set(Props::PADDING_TOP) {
+            self.padding_top
+        } else {
+            0
+        }
+    }
+    pub fn get_padding_right(&self) -> u16 {
+        if self.is_set(Props::PADDING_RIGHT) {
+            self.padding_right
+        } else {
+            0
+        }
+    }
+    pub fn get_padding_bottom(&self) -> u16 {
+        if self.is_set(Props::PADDING_BOTTOM) {
+            self.padding_bottom
+        } else {
+            0
+        }
+    }
+    pub fn get_padding_left(&self) -> u16 {
+        if self.is_set(Props::PADDING_LEFT) {
+            self.padding_left
+        } else {
+            0
+        }
+    }
+    pub fn get_margin_top(&self) -> u16 {
+        if self.is_set(Props::MARGIN_TOP) {
+            self.margin_top
+        } else {
+            0
+        }
+    }
+    pub fn get_margin_right(&self) -> u16 {
+        if self.is_set(Props::MARGIN_RIGHT) {
+            self.margin_right
+        } else {
+            0
+        }
+    }
+    pub fn get_margin_bottom(&self) -> u16 {
+        if self.is_set(Props::MARGIN_BOTTOM) {
+            self.margin_bottom
+        } else {
+            0
+        }
+    }
+    pub fn get_margin_left(&self) -> u16 {
+        if self.is_set(Props::MARGIN_LEFT) {
+            self.margin_left
+        } else {
+            0
+        }
+    }
+    pub fn get_align_horizontal(&self) -> Position {
+        if self.is_set(Props::ALIGN_H) {
+            self.align_h
+        } else {
+            Position::LEFT
+        }
+    }
+    pub fn get_align_vertical(&self) -> Position {
+        if self.is_set(Props::ALIGN_V) {
+            self.align_v
+        } else {
+            Position::TOP
+        }
+    }
+    pub fn get_border_style(&self) -> &Border {
+        &self.border_style
+    }
+    pub fn get_border_top_foreground(&self) -> Color {
+        if self.is_set(Props::BORDER_TOP_FG) {
+            self.border_top_fg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_right_foreground(&self) -> Color {
+        if self.is_set(Props::BORDER_RIGHT_FG) {
+            self.border_right_fg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_bottom_foreground(&self) -> Color {
+        if self.is_set(Props::BORDER_BOTTOM_FG) {
+            self.border_bottom_fg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_left_foreground(&self) -> Color {
+        if self.is_set(Props::BORDER_LEFT_FG) {
+            self.border_left_fg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_top_background(&self) -> Color {
+        if self.is_set(Props::BORDER_TOP_BG) {
+            self.border_top_bg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_right_background(&self) -> Color {
+        if self.is_set(Props::BORDER_RIGHT_BG) {
+            self.border_right_bg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_bottom_background(&self) -> Color {
+        if self.is_set(Props::BORDER_BOTTOM_BG) {
+            self.border_bottom_bg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_border_left_background(&self) -> Color {
+        if self.is_set(Props::BORDER_LEFT_BG) {
+            self.border_left_bg
+        } else {
+            Color::NoColor
+        }
+    }
+    pub fn get_tab_width(&self) -> i8 {
+        if self.is_set(Props::TAB_WIDTH) {
+            self.tab_width
+        } else {
+            4
+        }
+    }
 
     /// Total frame size (margins + padding + borders) as (width, height).
     pub fn frame_size(&self) -> (usize, usize) {
-        (self.get_horizontal_frame_size(), self.get_vertical_frame_size())
+        (
+            self.get_horizontal_frame_size(),
+            self.get_vertical_frame_size(),
+        )
     }
 
     // --- unset methods ---
 
-    fn unset_prop(mut self, prop: Props) -> Self { self.props -= prop; self.attrs -= prop; self }
+    fn unset_prop(mut self, prop: Props) -> Self {
+        self.props -= prop;
+        self.attrs -= prop;
+        self
+    }
 
-    pub fn unset_bold(self) -> Self { self.unset_prop(Props::BOLD) }
-    pub fn unset_italic(self) -> Self { self.unset_prop(Props::ITALIC) }
-    pub fn unset_underline(self) -> Self { self.unset_prop(Props::UNDERLINE) }
-    pub fn unset_strikethrough(self) -> Self { self.unset_prop(Props::STRIKETHROUGH) }
-    pub fn unset_reverse(self) -> Self { self.unset_prop(Props::REVERSE) }
-    pub fn unset_blink(self) -> Self { self.unset_prop(Props::BLINK) }
-    pub fn unset_faint(self) -> Self { self.unset_prop(Props::FAINT) }
-    pub fn unset_inline(self) -> Self { self.unset_prop(Props::INLINE) }
-    pub fn unset_foreground(mut self) -> Self { self.props -= Props::FOREGROUND; self.fg = Color::NoColor; self }
-    pub fn unset_background(mut self) -> Self { self.props -= Props::BACKGROUND; self.bg = Color::NoColor; self }
-    pub fn unset_width(mut self) -> Self { self.props -= Props::WIDTH; self.width = 0; self }
-    pub fn unset_height(mut self) -> Self { self.props -= Props::HEIGHT; self.height = 0; self }
-    pub fn unset_max_width(mut self) -> Self { self.props -= Props::MAX_WIDTH; self.max_width = 0; self }
-    pub fn unset_max_height(mut self) -> Self { self.props -= Props::MAX_HEIGHT; self.max_height = 0; self }
-    pub fn unset_padding_top(mut self) -> Self { self.props -= Props::PADDING_TOP; self.padding_top = 0; self }
-    pub fn unset_padding_right(mut self) -> Self { self.props -= Props::PADDING_RIGHT; self.padding_right = 0; self }
-    pub fn unset_padding_bottom(mut self) -> Self { self.props -= Props::PADDING_BOTTOM; self.padding_bottom = 0; self }
-    pub fn unset_padding_left(mut self) -> Self { self.props -= Props::PADDING_LEFT; self.padding_left = 0; self }
-    pub fn unset_margin_top(mut self) -> Self { self.props -= Props::MARGIN_TOP; self.margin_top = 0; self }
-    pub fn unset_margin_right(mut self) -> Self { self.props -= Props::MARGIN_RIGHT; self.margin_right = 0; self }
-    pub fn unset_margin_bottom(mut self) -> Self { self.props -= Props::MARGIN_BOTTOM; self.margin_bottom = 0; self }
-    pub fn unset_margin_left(mut self) -> Self { self.props -= Props::MARGIN_LEFT; self.margin_left = 0; self }
-    pub fn unset_border_style(mut self) -> Self { self.props -= Props::BORDER_STYLE; self.border_style = NO_BORDER; self }
+    pub fn unset_bold(self) -> Self {
+        self.unset_prop(Props::BOLD)
+    }
+    pub fn unset_italic(self) -> Self {
+        self.unset_prop(Props::ITALIC)
+    }
+    pub fn unset_underline(self) -> Self {
+        self.unset_prop(Props::UNDERLINE)
+    }
+    pub fn unset_strikethrough(self) -> Self {
+        self.unset_prop(Props::STRIKETHROUGH)
+    }
+    pub fn unset_reverse(self) -> Self {
+        self.unset_prop(Props::REVERSE)
+    }
+    pub fn unset_blink(self) -> Self {
+        self.unset_prop(Props::BLINK)
+    }
+    pub fn unset_faint(self) -> Self {
+        self.unset_prop(Props::FAINT)
+    }
+    pub fn unset_inline(self) -> Self {
+        self.unset_prop(Props::INLINE)
+    }
+    pub fn unset_foreground(mut self) -> Self {
+        self.props -= Props::FOREGROUND;
+        self.fg = Color::NoColor;
+        self
+    }
+    pub fn unset_background(mut self) -> Self {
+        self.props -= Props::BACKGROUND;
+        self.bg = Color::NoColor;
+        self
+    }
+    pub fn unset_width(mut self) -> Self {
+        self.props -= Props::WIDTH;
+        self.width = 0;
+        self
+    }
+    pub fn unset_height(mut self) -> Self {
+        self.props -= Props::HEIGHT;
+        self.height = 0;
+        self
+    }
+    pub fn unset_max_width(mut self) -> Self {
+        self.props -= Props::MAX_WIDTH;
+        self.max_width = 0;
+        self
+    }
+    pub fn unset_max_height(mut self) -> Self {
+        self.props -= Props::MAX_HEIGHT;
+        self.max_height = 0;
+        self
+    }
+    pub fn unset_padding_top(mut self) -> Self {
+        self.props -= Props::PADDING_TOP;
+        self.padding_top = 0;
+        self
+    }
+    pub fn unset_padding_right(mut self) -> Self {
+        self.props -= Props::PADDING_RIGHT;
+        self.padding_right = 0;
+        self
+    }
+    pub fn unset_padding_bottom(mut self) -> Self {
+        self.props -= Props::PADDING_BOTTOM;
+        self.padding_bottom = 0;
+        self
+    }
+    pub fn unset_padding_left(mut self) -> Self {
+        self.props -= Props::PADDING_LEFT;
+        self.padding_left = 0;
+        self
+    }
+    pub fn unset_margin_top(mut self) -> Self {
+        self.props -= Props::MARGIN_TOP;
+        self.margin_top = 0;
+        self
+    }
+    pub fn unset_margin_right(mut self) -> Self {
+        self.props -= Props::MARGIN_RIGHT;
+        self.margin_right = 0;
+        self
+    }
+    pub fn unset_margin_bottom(mut self) -> Self {
+        self.props -= Props::MARGIN_BOTTOM;
+        self.margin_bottom = 0;
+        self
+    }
+    pub fn unset_margin_left(mut self) -> Self {
+        self.props -= Props::MARGIN_LEFT;
+        self.margin_left = 0;
+        self
+    }
+    pub fn unset_border_style(mut self) -> Self {
+        self.props -= Props::BORDER_STYLE;
+        self.border_style = NO_BORDER;
+        self
+    }
 
     // --- size helpers ---
 
@@ -856,7 +1130,9 @@ impl Style {
     }
 
     pub fn get_horizontal_frame_size(&self) -> usize {
-        self.get_horizontal_margins() + self.get_horizontal_padding() + self.get_horizontal_border_size()
+        self.get_horizontal_margins()
+            + self.get_horizontal_padding()
+            + self.get_horizontal_border_size()
     }
 
     pub fn get_vertical_frame_size(&self) -> usize {
@@ -900,7 +1176,9 @@ mod tests {
 
     #[test]
     fn test_inherit() {
-        let parent = Style::new().bold(true).foreground(Color::Rgb { r: 255, g: 0, b: 0 });
+        let parent = Style::new()
+            .bold(true)
+            .foreground(Color::Rgb { r: 255, g: 0, b: 0 });
         let child = Style::new().italic(true).inherit(&parent);
         assert!(child.get_bool(Props::BOLD));
         assert!(child.get_bool(Props::ITALIC));

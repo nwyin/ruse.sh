@@ -39,7 +39,9 @@ impl Whitespace {
         let mut i = 0;
         while remaining > 0 {
             let ch = self.chars[i % self.chars.len()];
-            let ch_width = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1).max(1);
+            let ch_width = unicode_width::UnicodeWidthChar::width(ch)
+                .unwrap_or(1)
+                .max(1);
             if ch_width <= remaining {
                 out.push(ch);
                 remaining -= ch_width;

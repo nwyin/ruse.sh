@@ -6,7 +6,11 @@
 ///
 /// Color quantization reduces to at most 256 palette entries.
 pub fn encode_sixel(pixels: &[u8], width: u32, height: u32) -> String {
-    assert_eq!(pixels.len(), (width * height * 3) as usize, "pixel data must be width*height*3 bytes (RGB)");
+    assert_eq!(
+        pixels.len(),
+        (width * height * 3) as usize,
+        "pixel data must be width*height*3 bytes (RGB)"
+    );
 
     let palette = build_palette(pixels);
     let indexed = quantize_pixels(pixels, &palette);

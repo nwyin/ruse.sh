@@ -35,10 +35,10 @@ fn cached_convert(
     convert_fn: fn(Color) -> Color,
 ) -> Color {
     // Fast path: read lock
-    if let Ok(guard) = cache.read() {
-        if let Some(cached) = guard.get(&color) {
-            return *cached;
-        }
+    if let Ok(guard) = cache.read()
+        && let Some(cached) = guard.get(&color)
+    {
+        return *cached;
     }
 
     // Slow path: compute and cache
@@ -95,7 +95,11 @@ fn convert_to_256(color: Color) -> Color {
 
             // Work out the closest grey (average of RGB)
             let grey_avg = (ri + gi + bi) / 3;
-            let grey_idx = if grey_avg > 238 { 23 } else { (grey_avg - 3).max(0) / 10 };
+            let grey_idx = if grey_avg > 238 {
+                23
+            } else {
+                (grey_avg - 3).max(0) / 10
+            };
             let grey = 8 + 10 * grey_idx;
 
             // Use Euclidean distance in RGB to choose between cube and greyscale.
@@ -134,7 +138,11 @@ mod tests {
 
     #[test]
     fn test_truecolor_passthrough() {
-        let c = Color::Rgb { r: 255, g: 128, b: 0 };
+        let c = Color::Rgb {
+            r: 255,
+            g: 128,
+            b: 0,
+        };
         assert_eq!(Profile::TrueColor.convert(c), c);
     }
 
@@ -159,7 +167,11 @@ mod tests {
 
     #[test]
     fn test_ansi256_white() {
-        let c = Color::Rgb { r: 255, g: 255, b: 255 };
+        let c = Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255,
+        };
         assert_eq!(Profile::Ansi256.convert(c), Color::Indexed(231));
     }
 
@@ -169,7 +181,11 @@ mod tests {
         // cube: to_6cube(128) = (128-35)/40 = 2 => Q2C[2] = 0x87 = 135
         // cube color = (135,135,135) dist from (128,128,128) = 3*49 = 147
         // grey 128 is exact match dist = 0
-        let c = Color::Rgb { r: 128, g: 128, b: 128 };
+        let c = Color::Rgb {
+            r: 128,
+            g: 128,
+            b: 128,
+        };
         assert_eq!(Profile::Ansi256.convert(c), Color::Indexed(244));
     }
 
@@ -177,7 +193,11 @@ mod tests {
     fn test_ansi256_offwhite() {
         // #eeeeee = (238,238,238) => grey_avg=238, grey_idx=(238-3)/10=23, grey=238
         // Exact grey match => 232+23 = 255
-        let c = Color::Rgb { r: 0xee, g: 0xee, b: 0xee };
+        let c = Color::Rgb {
+            r: 0xee,
+            g: 0xee,
+            b: 0xee,
+        };
         assert_eq!(Profile::Ansi256.convert(c), Color::Indexed(255));
     }
 
@@ -189,7 +209,11 @@ mod tests {
         // qb = to_6cube(55) = 1, cb = 0x5f = 95
         // ci = 36*5 + 6*2 + 1 = 193
         // Index = 16 + 193 = 209
-        let c = Color::Rgb { r: 255, g: 133, b: 55 };
+        let c = Color::Rgb {
+            r: 255,
+            g: 133,
+            b: 55,
+        };
         assert_eq!(Profile::Ansi256.convert(c), Color::Indexed(209));
     }
 
@@ -203,7 +227,11 @@ mod tests {
     #[test]
     fn test_ansi_from_rgb() {
         // #ff8537 -> 256=209 -> 16=9 (bright red)
-        let c = Color::Rgb { r: 255, g: 133, b: 55 };
+        let c = Color::Rgb {
+            r: 255,
+            g: 133,
+            b: 55,
+        };
         assert_eq!(Profile::Ansi.convert(c), Color::Basic(9));
     }
 
@@ -229,14 +257,22 @@ mod tests {
     fn test_ansi256_silver_foil() {
         // #afafaf = (175, 175, 175) => cube match is exact at Q2C[3]=175
         // ci = 36*3 + 6*3 + 3 = 129, index = 16 + 129 = 145
-        let c = Color::Rgb { r: 0xaf, g: 0xaf, b: 0xaf };
+        let c = Color::Rgb {
+            r: 0xaf,
+            g: 0xaf,
+            b: 0xaf,
+        };
         assert_eq!(Profile::Ansi256.convert(c), Color::Indexed(145));
     }
 
     #[test]
     fn test_ansi_white() {
         // RGB (255,255,255) -> 256=231 -> 16=15 (bright white)
-        let c = Color::Rgb { r: 255, g: 255, b: 255 };
+        let c = Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255,
+        };
         assert_eq!(Profile::Ansi.convert(c), Color::Basic(15));
     }
 }

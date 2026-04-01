@@ -292,12 +292,11 @@ impl Screen {
 
         // Match unique hash pairs
         for (hash, new_indices) in &new_counts {
-            if new_indices.len() == 1 {
-                if let Some(old_indices) = old_counts.get(hash) {
-                    if old_indices.len() == 1 {
-                        self.oldnum[new_indices[0]] = old_indices[0] as i32;
-                    }
-                }
+            if new_indices.len() == 1
+                && let Some(old_indices) = old_counts.get(hash)
+                && old_indices.len() == 1
+            {
+                self.oldnum[new_indices[0]] = old_indices[0] as i32;
             }
         }
 
@@ -331,13 +330,13 @@ impl Screen {
         let mut y = 0;
         while y < h {
             if self.oldnum[y] >= 0 {
-                let shift = self.oldnum[y] as i32 - y as i32;
+                let shift = self.oldnum[y] - y as i32;
                 if shift > 0 {
                     // Lines shifted down — need to scroll up (delete at top, insert at bottom)
                     let mut count = 1;
                     while y + count < h
                         && self.oldnum[y + count] >= 0
-                        && (self.oldnum[y + count] as i32 - (y + count) as i32) == shift
+                        && (self.oldnum[y + count] - (y + count) as i32) == shift
                     {
                         count += 1;
                     }
@@ -360,12 +359,12 @@ impl Screen {
         while y > 0 {
             y -= 1;
             if self.oldnum[y] >= 0 {
-                let shift = self.oldnum[y] as i32 - y as i32;
+                let shift = self.oldnum[y] - y as i32;
                 if shift < 0 {
                     let mut start = y;
                     while start > 0
                         && self.oldnum[start - 1] >= 0
-                        && (self.oldnum[start - 1] as i32 - (start - 1) as i32) == shift
+                        && (self.oldnum[start - 1] - (start - 1) as i32) == shift
                     {
                         start -= 1;
                     }
@@ -496,7 +495,8 @@ impl Screen {
         // Apply link diff
         if cell.link != self.cur.link {
             if !self.cur.link.is_empty() {
-                self.out.extend_from_slice(Link::close_sequence().as_bytes());
+                self.out
+                    .extend_from_slice(Link::close_sequence().as_bytes());
             }
             if !cell.link.is_empty() {
                 self.out
@@ -541,12 +541,10 @@ impl Screen {
                 } else {
                     let _ = write!(rel, "\x1b[{}B", dy);
                 }
+            } else if dy == -1 {
+                rel.push_str("\x1b[A");
             } else {
-                if dy == -1 {
-                    rel.push_str("\x1b[A");
-                } else {
-                    let _ = write!(rel, "\x1b[{}A", -dy);
-                }
+                let _ = write!(rel, "\x1b[{}A", -dy);
             }
         }
 
@@ -557,12 +555,10 @@ impl Screen {
                 } else {
                     let _ = write!(rel, "\x1b[{}C", dx);
                 }
+            } else if dx == -1 {
+                rel.push_str("\x1b[D");
             } else {
-                if dx == -1 {
-                    rel.push_str("\x1b[D");
-                } else {
-                    let _ = write!(rel, "\x1b[{}D", -dx);
-                }
+                let _ = write!(rel, "\x1b[{}D", -dx);
             }
         }
 
@@ -580,12 +576,10 @@ impl Screen {
                     } else {
                         let _ = write!(cr_rel, "\x1b[{}B", dy);
                     }
+                } else if dy == -1 {
+                    cr_rel.push_str("\x1b[A");
                 } else {
-                    if dy == -1 {
-                        cr_rel.push_str("\x1b[A");
-                    } else {
-                        let _ = write!(cr_rel, "\x1b[{}A", -dy);
-                    }
+                    let _ = write!(cr_rel, "\x1b[{}A", -dy);
                 }
             }
             if tx == 1 {
@@ -606,12 +600,10 @@ impl Screen {
                     } else {
                         let _ = write!(cr, "\x1b[{}B", dy);
                     }
+                } else if dy == -1 {
+                    cr.push_str("\x1b[A");
                 } else {
-                    if dy == -1 {
-                        cr.push_str("\x1b[A");
-                    } else {
-                        let _ = write!(cr, "\x1b[{}A", -dy);
-                    }
+                    let _ = write!(cr, "\x1b[{}A", -dy);
                 }
             }
             if cr.len() < best.len() {
@@ -643,7 +635,6 @@ impl Screen {
             let _ = write!(self.out, "\x1b[{}T", n);
         }
     }
-
 }
 
 /// Parse an ANSI-styled string and write cells into a buffer within the given bounds.
@@ -670,7 +661,8 @@ fn parse_content_into_buffer(
         let b = bytes[i];
 
         if b == b'\x1b' {
-            let (new_i, esc_result) = parse_escape_impl(bytes, i, &mut current_style, &mut current_link);
+            let (new_i, esc_result) =
+                parse_escape_impl(bytes, i, &mut current_style, &mut current_link);
             i = new_i;
             if let Some(new_x) = esc_result.new_x {
                 // CHA is region-relative
@@ -731,17 +723,15 @@ fn parse_content_into_buffer(
                 i += 1;
                 continue;
             }
+        } else if i + 3 < bytes.len() {
+            ch = core::str::from_utf8(&bytes[i..i + 4])
+                .ok()
+                .and_then(|s| s.chars().next())
+                .unwrap_or('?');
+            char_len = 4;
         } else {
-            if i + 3 < bytes.len() {
-                ch = core::str::from_utf8(&bytes[i..i + 4])
-                    .ok()
-                    .and_then(|s| s.chars().next())
-                    .unwrap_or('?');
-                char_len = 4;
-            } else {
-                i += 1;
-                continue;
-            }
+            i += 1;
+            continue;
         }
         i += char_len;
 
@@ -772,69 +762,74 @@ fn parse_escape_impl(
     style: &mut CellStyle,
     link: &mut Link,
 ) -> (usize, EscapeResult) {
-        let len = bytes.len();
-        let mut i = start + 1; // Skip ESC
-        let mut result = EscapeResult::default();
+    let len = bytes.len();
+    let mut i = start + 1; // Skip ESC
+    let mut result = EscapeResult::default();
 
-        if i >= len {
-            return (i, result);
-        }
-
-        match bytes[i] {
-            b'[' => {
-                // CSI sequence
-                i += 1;
-                let params_start = i;
-
-                // Collect parameter bytes
-                while i < len && (bytes[i].is_ascii_digit() || bytes[i] == b';' || bytes[i] == b':' || bytes[i] == b'?') {
-                    i += 1;
-                }
-
-                // Final byte
-                if i < len {
-                    let final_byte = bytes[i];
-                    i += 1;
-
-                    if final_byte == b'm' {
-                        // SGR sequence
-                        parse_sgr_impl(&bytes[params_start..i - 1], style);
-                    } else if final_byte == b'G' {
-                        // CHA — Cursor Horizontal Absolute: move to column n (1-based)
-                        let param_str = std::str::from_utf8(&bytes[params_start..i - 1]).unwrap_or("1");
-                        let col = param_str.parse::<usize>().unwrap_or(1);
-                        result.new_x = Some(col.saturating_sub(1)); // 1-based → 0-based
-                    }
-                }
-            }
-            b']' => {
-                // OSC sequence — find ST (ESC \ or BEL)
-                i += 1;
-                let osc_start = i;
-                while i < len {
-                    if bytes[i] == 0x07 {
-                        // BEL terminator
-                        parse_osc_impl(&bytes[osc_start..i], link);
-                        i += 1;
-                        break;
-                    }
-                    if bytes[i] == 0x1b && i + 1 < len && bytes[i + 1] == b'\\' {
-                        // ST terminator
-                        parse_osc_impl(&bytes[osc_start..i], link);
-                        i += 2;
-                        break;
-                    }
-                    i += 1;
-                }
-            }
-            _ => {
-                // Other escape — skip
-                i += 1;
-            }
-        }
-
-        (i, result)
+    if i >= len {
+        return (i, result);
     }
+
+    match bytes[i] {
+        b'[' => {
+            // CSI sequence
+            i += 1;
+            let params_start = i;
+
+            // Collect parameter bytes
+            while i < len
+                && (bytes[i].is_ascii_digit()
+                    || bytes[i] == b';'
+                    || bytes[i] == b':'
+                    || bytes[i] == b'?')
+            {
+                i += 1;
+            }
+
+            // Final byte
+            if i < len {
+                let final_byte = bytes[i];
+                i += 1;
+
+                if final_byte == b'm' {
+                    // SGR sequence
+                    parse_sgr_impl(&bytes[params_start..i - 1], style);
+                } else if final_byte == b'G' {
+                    // CHA — Cursor Horizontal Absolute: move to column n (1-based)
+                    let param_str = std::str::from_utf8(&bytes[params_start..i - 1]).unwrap_or("1");
+                    let col = param_str.parse::<usize>().unwrap_or(1);
+                    result.new_x = Some(col.saturating_sub(1)); // 1-based → 0-based
+                }
+            }
+        }
+        b']' => {
+            // OSC sequence — find ST (ESC \ or BEL)
+            i += 1;
+            let osc_start = i;
+            while i < len {
+                if bytes[i] == 0x07 {
+                    // BEL terminator
+                    parse_osc_impl(&bytes[osc_start..i], link);
+                    i += 1;
+                    break;
+                }
+                if bytes[i] == 0x1b && i + 1 < len && bytes[i + 1] == b'\\' {
+                    // ST terminator
+                    parse_osc_impl(&bytes[osc_start..i], link);
+                    i += 2;
+                    break;
+                }
+                i += 1;
+            }
+        }
+        _ => {
+            // Other escape — skip
+            i += 1;
+        }
+    }
+
+    (i, result)
+}
 
 /// Parse SGR parameters and update cell style.
 fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
@@ -929,16 +924,15 @@ fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
 /// Parse OSC sequence for hyperlinks.
 fn parse_osc_impl(data: &[u8], link: &mut Link) {
     let s = std::str::from_utf8(data).unwrap_or("");
-    if s.starts_with("8;") {
-        let rest = &s[2..];
-        if let Some(semi) = rest.find(';') {
-            let params = &rest[..semi];
-            let url = &rest[semi + 1..];
-            if url.is_empty() {
-                link.reset();
-            } else {
-                *link = Link::with_params(url, params);
-            }
+    if let Some(rest) = s.strip_prefix("8;")
+        && let Some(semi) = rest.find(';')
+    {
+        let params = &rest[..semi];
+        let url = &rest[semi + 1..];
+        if url.is_empty() {
+            link.reset();
+        } else {
+            *link = Link::with_params(url, params);
         }
     }
 }
@@ -1026,7 +1020,11 @@ mod tests {
         screen.set_content("\x1b[1mBold\x1b[0m");
         let cell = screen.newbuf.cell(0, 0).unwrap();
         assert_eq!(cell.rune, 'B');
-        assert!(cell.style.attrs.contains(super::super::style::AttrMask::BOLD));
+        assert!(
+            cell.style
+                .attrs
+                .contains(super::super::style::AttrMask::BOLD)
+        );
     }
 
     #[test]
@@ -1145,7 +1143,11 @@ mod tests {
         screen.draw_region("\x1b[1mBold\x1b[0m", Rect::new(2, 1, 10, 2));
         let cell = screen.newbuf.cell(2, 1).unwrap();
         assert_eq!(cell.rune, 'B');
-        assert!(cell.style.attrs.contains(super::super::style::AttrMask::BOLD));
+        assert!(
+            cell.style
+                .attrs
+                .contains(super::super::style::AttrMask::BOLD)
+        );
     }
 
     #[test]

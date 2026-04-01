@@ -131,7 +131,11 @@ pub fn blend_1d(steps: usize, stops: &[Color]) -> Vec<Color> {
     }
 
     // Filter out NoColor
-    let valid: Vec<Color> = stops.iter().copied().filter(|c| *c != Color::NoColor).collect();
+    let valid: Vec<Color> = stops
+        .iter()
+        .copied()
+        .filter(|c| *c != Color::NoColor)
+        .collect();
 
     if valid.is_empty() {
         return vec![];
@@ -174,10 +178,18 @@ pub fn blend_1d(steps: usize, stops: &[Color]) -> Vec<Color> {
 
         let segment_size = default_size + if i < remaining { 1 } else { 0 };
 
-        let divisor = if segment_size > 1 { (segment_size - 1) as f32 } else { 1.0 };
+        let divisor = if segment_size > 1 {
+            (segment_size - 1) as f32
+        } else {
+            1.0
+        };
 
         for j in 0..segment_size {
-            let factor = if segment_size > 1 { j as f32 / divisor } else { 0.0 };
+            let factor = if segment_size > 1 {
+                j as f32 / divisor
+            } else {
+                0.0
+            };
             let blended = from.mix(to, factor);
             result.push(from_lab(blended));
         }
@@ -192,35 +204,68 @@ mod tests {
 
     #[test]
     fn test_darken() {
-        let white = Color::Rgb { r: 255, g: 255, b: 255 };
+        let white = Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255,
+        };
         let darkened = darken(white, 0.5);
-        assert_eq!(darkened, Color::Rgb { r: 128, g: 128, b: 128 });
+        assert_eq!(
+            darkened,
+            Color::Rgb {
+                r: 128,
+                g: 128,
+                b: 128
+            }
+        );
     }
 
     #[test]
     fn test_lighten() {
         let black = Color::Rgb { r: 0, g: 0, b: 0 };
         let lightened = lighten(black, 0.5);
-        assert_eq!(lightened, Color::Rgb { r: 128, g: 128, b: 128 });
+        assert_eq!(
+            lightened,
+            Color::Rgb {
+                r: 128,
+                g: 128,
+                b: 128
+            }
+        );
     }
 
     #[test]
     fn test_complementary() {
         let red = Color::Rgb { r: 255, g: 0, b: 0 };
-        assert_eq!(complementary(red), Color::Rgb { r: 0, g: 255, b: 255 });
+        assert_eq!(
+            complementary(red),
+            Color::Rgb {
+                r: 0,
+                g: 255,
+                b: 255
+            }
+        );
     }
 
     #[test]
     fn test_is_dark() {
         assert!(is_dark(Color::Rgb { r: 0, g: 0, b: 0 }));
-        assert!(!is_dark(Color::Rgb { r: 255, g: 255, b: 255 }));
+        assert!(!is_dark(Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255
+        }));
         assert!(is_dark(Color::NoColor));
     }
 
     #[test]
     fn test_blend_1d_basic() {
         let black = Color::Rgb { r: 0, g: 0, b: 0 };
-        let white = Color::Rgb { r: 255, g: 255, b: 255 };
+        let white = Color::Rgb {
+            r: 255,
+            g: 255,
+            b: 255,
+        };
         let result = blend_1d(3, &[black, white]);
         assert_eq!(result.len(), 3);
         assert_eq!(result[0], black);

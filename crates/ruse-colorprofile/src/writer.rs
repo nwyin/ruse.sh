@@ -120,12 +120,20 @@ fn parse_sgr_params(params: &[u8]) -> Vec<SgrParam> {
 
     for &b in params {
         if b == b';' {
-            let value = if current.is_empty() { 0 } else { current.parse::<i32>().unwrap_or(0) };
+            let value = if current.is_empty() {
+                0
+            } else {
+                current.parse::<i32>().unwrap_or(0)
+            };
             result.push(SgrParam { value, is_sub });
             current.clear();
             is_sub = false;
         } else if b == b':' {
-            let value = if current.is_empty() { 0 } else { current.parse::<i32>().unwrap_or(0) };
+            let value = if current.is_empty() {
+                0
+            } else {
+                current.parse::<i32>().unwrap_or(0)
+            };
             result.push(SgrParam { value, is_sub });
             current.clear();
             is_sub = true;
@@ -134,7 +142,11 @@ fn parse_sgr_params(params: &[u8]) -> Vec<SgrParam> {
         }
     }
     // Last parameter
-    let value = if current.is_empty() { 0 } else { current.parse::<i32>().unwrap_or(0) };
+    let value = if current.is_empty() {
+        0
+    } else {
+        current.parse::<i32>().unwrap_or(0)
+    };
     result.push(SgrParam { value, is_sub });
 
     result
@@ -240,7 +252,13 @@ fn handle_sgr(params_bytes: &[u8], profile: Profile) -> String {
 
 /// Handle extended color sequences (38;5;N, 38;2;R;G;B, 38:5:N, 38:2::R:G:B, etc.)
 /// Returns the number of params consumed.
-fn handle_extended_color(params: &[SgrParam], start: usize, profile: Profile, is_fg: bool, style_parts: &mut Vec<String>) -> usize {
+fn handle_extended_color(
+    params: &[SgrParam],
+    start: usize,
+    profile: Profile,
+    is_fg: bool,
+    style_parts: &mut Vec<String>,
+) -> usize {
     if start + 1 >= params.len() {
         return 1;
     }
@@ -324,7 +342,12 @@ fn handle_extended_color(params: &[SgrParam], start: usize, profile: Profile, is
 }
 
 /// Handle extended underline color sequences (58;5;N, 58;2;R;G;B, etc.)
-fn handle_extended_color_ul(params: &[SgrParam], start: usize, profile: Profile, style_parts: &mut Vec<String>) -> usize {
+fn handle_extended_color_ul(
+    params: &[SgrParam],
+    start: usize,
+    profile: Profile,
+    style_parts: &mut Vec<String>,
+) -> usize {
     if start + 1 >= params.len() {
         return 1;
     }
@@ -338,7 +361,11 @@ fn handle_extended_color_ul(params: &[SgrParam], start: usize, profile: Profile,
                 return 2;
             }
             let idx = params[start + 2].value as u8;
-            let color = if idx < 16 { Color::Basic(idx) } else { Color::Indexed(idx) };
+            let color = if idx < 16 {
+                Color::Basic(idx)
+            } else {
+                Color::Indexed(idx)
+            };
 
             if profile >= Profile::Ansi {
                 let converted = profile.convert(color);
@@ -449,63 +476,126 @@ mod tests {
     fn test_simple_style_attributes() {
         let input = "hello \x1b[1mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "hello \x1b[1mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "hello \x1b[1mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "hello \x1b[1mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "hello \x1b[1mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "hello \x1b[1mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "hello \x1b[1mworld\x1b[m"
+        );
     }
 
     #[test]
     fn test_simple_ansi_color_fg() {
         let input = "hello \x1b[31mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "hello \x1b[31mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "hello \x1b[31mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "hello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "hello \x1b[31mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "hello \x1b[31mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "hello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]
     fn test_default_fg_after_ansi_color() {
         let input = "\x1b[31mhello \x1b[39mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "\x1b[31mhello \x1b[39mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "\x1b[31mhello \x1b[39mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "\x1b[mhello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "\x1b[31mhello \x1b[39mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "\x1b[31mhello \x1b[39mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "\x1b[mhello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]
     fn test_ansi_color_fg_and_bg() {
         let input = "\x1b[31;42mhello world\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "\x1b[31;42mhello world\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "\x1b[31;42mhello world\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "\x1b[mhello world\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "\x1b[31;42mhello world\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "\x1b[31;42mhello world\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "\x1b[mhello world\x1b[m"
+        );
     }
 
     #[test]
     fn test_bright_ansi_fg_and_bg() {
         let input = "\x1b[91;102mhello world\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "\x1b[91;102mhello world\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "\x1b[91;102mhello world\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "\x1b[mhello world\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "\x1b[91;102mhello world\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "\x1b[91;102mhello world\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "\x1b[mhello world\x1b[m"
+        );
     }
 
     #[test]
     fn test_256_color_fg() {
         let input = "hello \x1b[38;5;196mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "hello \x1b[38;5;196mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "hello \x1b[91mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "hello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "hello \x1b[38;5;196mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "hello \x1b[91mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "hello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]
     fn test_256_color_bg() {
         let input = "\x1b[48;5;196mhello world\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "\x1b[48;5;196mhello world\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "\x1b[101mhello world\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "\x1b[mhello world\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "\x1b[48;5;196mhello world\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "\x1b[101mhello world\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "\x1b[mhello world\x1b[m"
+        );
     }
 
     #[test]
@@ -513,9 +603,18 @@ mod tests {
         // #ff8537 -> 256: 209, 16: 9 (bright red)
         let input = "hello \x1b[38;2;255;133;55mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "hello \x1b[38;5;209mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "hello \x1b[91mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "hello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "hello \x1b[38;5;209mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "hello \x1b[91mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "hello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]
@@ -523,36 +622,72 @@ mod tests {
         // Colon-separated: 38:2::255:133:55
         let input = "hello \x1b[38:2::255:133:55mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "hello \x1b[38;5;209mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "hello \x1b[91mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "hello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "hello \x1b[38;5;209mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "hello \x1b[91mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "hello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]
     fn test_itu_256_color_bg() {
         let input = "hello \x1b[48:5:196mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "hello \x1b[48;5;196mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "hello \x1b[101mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "hello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "hello \x1b[48;5;196mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "hello \x1b[101mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "hello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]
     fn test_missing_param() {
         let input = "\x1b[31mhello \x1b[;1mworld";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "\x1b[31mhello \x1b[;1mworld");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "\x1b[31mhello \x1b[;1mworld");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "\x1b[mhello \x1b[;1mworld");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "\x1b[31mhello \x1b[;1mworld"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "\x1b[31mhello \x1b[;1mworld"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "\x1b[mhello \x1b[;1mworld"
+        );
     }
 
     #[test]
     fn test_color_with_other_attributes() {
         let input = "\x1b[1;38;5;204mhello \x1b[38;5;204mworld\x1b[m";
         assert_eq!(write_to_profile(input, Profile::TrueColor), input);
-        assert_eq!(write_to_profile(input, Profile::Ansi256), "\x1b[1;38;5;204mhello \x1b[38;5;204mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ansi), "\x1b[1;91mhello \x1b[91mworld\x1b[m");
-        assert_eq!(write_to_profile(input, Profile::Ascii), "\x1b[1mhello \x1b[mworld\x1b[m");
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi256),
+            "\x1b[1;38;5;204mhello \x1b[38;5;204mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ansi),
+            "\x1b[1;91mhello \x1b[91mworld\x1b[m"
+        );
+        assert_eq!(
+            write_to_profile(input, Profile::Ascii),
+            "\x1b[1mhello \x1b[mworld\x1b[m"
+        );
     }
 
     #[test]

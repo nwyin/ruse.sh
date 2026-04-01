@@ -82,10 +82,8 @@ impl Buffer {
                 if !line[i].is_empty() {
                     let orig_width = line[i].width as usize;
                     if i + orig_width > x {
-                        for j in i..i + orig_width {
-                            if j < self.width {
-                                line[j].make_blank();
-                            }
+                        for cell in line.iter_mut().skip(i).take(orig_width) {
+                            cell.make_blank();
                         }
                     }
                     break;
@@ -201,10 +199,10 @@ impl Buffer {
                 if dx >= self.width {
                     break;
                 }
-                if let Some(cell) = source.cell(sx, sy) {
-                    if !cell.is_empty() {
-                        self.set_cell(dx, dy, cell.clone());
-                    }
+                if let Some(cell) = source.cell(sx, sy)
+                    && !cell.is_empty()
+                {
+                    self.set_cell(dx, dy, cell.clone());
                 }
             }
         }
@@ -218,17 +216,19 @@ impl Buffer {
         let line = &self.lines[y];
         let mut h: u64 = 0;
         for cell in line {
-            h = h.wrapping_shl(5).wrapping_add(h).wrapping_add(cell.rune as u64);
+            h = h
+                .wrapping_shl(5)
+                .wrapping_add(h)
+                .wrapping_add(cell.rune as u64);
         }
         h
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::style::CellStyle;
+    use super::*;
 
     #[test]
     fn test_new_buffer() {

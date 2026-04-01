@@ -43,11 +43,7 @@ impl Model for SpinnerDemo {
         }
 
         lines.push(String::new());
-        lines.push(
-            Style::new()
-                .faint(true)
-                .render(&["Press q to quit"]),
-        );
+        lines.push(Style::new().faint(true).render(&["Press q to quit"]));
 
         let box_style = Style::new()
             .border(ROUNDED_BORDER, &[true])

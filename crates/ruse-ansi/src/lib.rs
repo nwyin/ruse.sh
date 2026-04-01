@@ -15,19 +15,23 @@ pub mod vt;
 pub mod width;
 pub mod wrap;
 
-pub use cellbuf::{Buffer, Cell, CellStyle, Screen, ScreenOptions, AttrMask, UnderlineStyle, Link, Position, Rect};
+pub use cellbuf::{
+    AttrMask, Buffer, Cell, CellStyle, Link, Position, Rect, Screen, ScreenOptions, UnderlineStyle,
+};
 pub use image_detect::{ImageProtocol, detect_image_protocol};
 pub use iterm2::encode_iterm2_image;
 pub use kitty::{KittyOptions, encode_image};
 pub use mosaic::render_mosaic;
-pub use osc::{set_window_title, hyperlink_open, hyperlink_close, set_clipboard, request_clipboard, notify};
-pub use sixel::encode_sixel;
+pub use osc::{
+    hyperlink_close, hyperlink_open, notify, request_clipboard, set_clipboard, set_window_title,
+};
 pub use pad::{pad, pad_left, pad_right};
 pub use palette::Palette;
 pub use parser::{Handler, Parser};
 pub use sgr::SgrStyle;
+pub use sixel::encode_sixel;
 pub use strip::strip_ansi;
 pub use truncate::{truncate, truncate_left};
-pub use width::{grapheme_width, string_height, string_width};
 pub use vt::Terminal;
+pub use width::{grapheme_width, string_height, string_width};
 pub use wrap::{wordwrap, wrap};

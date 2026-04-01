@@ -1,4 +1,4 @@
-use crate::cellbuf::{Buffer, Cell, CellStyle, AttrMask, UnderlineStyle};
+use crate::cellbuf::{AttrMask, Buffer, Cell, CellStyle, UnderlineStyle};
 use crate::parser::{Handler, Parser};
 
 /// VT102/xterm terminal emulator.
@@ -79,7 +79,7 @@ impl Terminal {
     pub fn process(&mut self, data: &[u8]) {
         // We need to split borrow: parser vs the rest of Terminal.
         // Take the parser out temporarily.
-        let mut parser = std::mem::replace(&mut self.parser, Parser::new());
+        let mut parser = std::mem::take(&mut self.parser);
         {
             let mut handler = TerminalHandler { term: self };
             parser.process(&mut handler, data);
@@ -155,7 +155,11 @@ impl Terminal {
             // Remove the top line, shift everything up, insert blank at bottom
             for y in top..bot {
                 for x in 0..w {
-                    let cell = self.buffer.cell(x, y + 1).cloned().unwrap_or_else(Cell::blank);
+                    let cell = self
+                        .buffer
+                        .cell(x, y + 1)
+                        .cloned()
+                        .unwrap_or_else(Cell::blank);
                     if let Some(dst) = self.buffer.cell_mut(x, y) {
                         *dst = cell;
                     }
@@ -176,7 +180,11 @@ impl Terminal {
             // Shift lines down within [top..bot], insert blank at top
             for y in (top + 1..=bot).rev() {
                 for x in 0..w {
-                    let cell = self.buffer.cell(x, y - 1).cloned().unwrap_or_else(Cell::blank);
+                    let cell = self
+                        .buffer
+                        .cell(x, y - 1)
+                        .cloned()
+                        .unwrap_or_else(Cell::blank);
                     if let Some(dst) = self.buffer.cell_mut(x, y) {
                         *dst = cell;
                     }
@@ -223,10 +231,12 @@ impl<'a> Handler for TerminalHandler<'a> {
         let cw = unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) as u16;
         if cw == 0 {
             // Combining character: attach to previous cell
-            if t.cursor_x > 0 {
-                if let Some(cell) = t.buffer.cell_mut((t.cursor_x - 1) as usize, t.cursor_y as usize) {
-                    cell.comb.push(ch);
-                }
+            if t.cursor_x > 0
+                && let Some(cell) = t
+                    .buffer
+                    .cell_mut((t.cursor_x - 1) as usize, t.cursor_y as usize)
+            {
+                cell.comb.push(ch);
             }
             return;
         }
@@ -238,7 +248,11 @@ impl<'a> Handler for TerminalHandler<'a> {
             let w = t.width as usize;
             let shift = cw as usize;
             for col in (x + shift..w).rev() {
-                let src = t.buffer.cell(col - shift, y).cloned().unwrap_or_else(Cell::blank);
+                let src = t
+                    .buffer
+                    .cell(col - shift, y)
+                    .cloned()
+                    .unwrap_or_else(Cell::blank);
                 if let Some(dst) = t.buffer.cell_mut(col, y) {
                     *dst = src;
                 }
@@ -247,7 +261,8 @@ impl<'a> Handler for TerminalHandler<'a> {
 
         let mut cell = Cell::new(ch);
         cell.style = t.style.clone();
-        t.buffer.set_cell(t.cursor_x as usize, t.cursor_y as usize, cell);
+        t.buffer
+            .set_cell(t.cursor_x as usize, t.cursor_y as usize, cell);
 
         // Advance cursor
         let new_x = t.cursor_x + cw;
@@ -268,7 +283,7 @@ impl<'a> Handler for TerminalHandler<'a> {
         t.wrap_pending = false;
         match byte {
             // Line feed, vertical tab, form feed
-            0x0A | 0x0B | 0x0C => {
+            0x0A..=0x0C => {
                 if t.cursor_y == t.margin_bottom {
                     t.scroll_up(1);
                 } else if t.cursor_y < t.height - 1 {
@@ -370,7 +385,11 @@ impl<'a> Handler for TerminalHandler<'a> {
                 let n = param(params, 0, 1) as u16;
                 if t.cursor_y >= t.margin_top && t.cursor_y <= t.margin_bottom {
                     let count = n.min(t.margin_bottom - t.cursor_y + 1);
-                    t.scroll_region_down(t.cursor_y as usize, t.margin_bottom as usize, count as usize);
+                    t.scroll_region_down(
+                        t.cursor_y as usize,
+                        t.margin_bottom as usize,
+                        count as usize,
+                    );
                 }
             }
             // DL - delete lines
@@ -378,7 +397,11 @@ impl<'a> Handler for TerminalHandler<'a> {
                 let n = param(params, 0, 1) as u16;
                 if t.cursor_y >= t.margin_top && t.cursor_y <= t.margin_bottom {
                     let count = n.min(t.margin_bottom - t.cursor_y + 1);
-                    t.scroll_region_up(t.cursor_y as usize, t.margin_bottom as usize, count as usize);
+                    t.scroll_region_up(
+                        t.cursor_y as usize,
+                        t.margin_bottom as usize,
+                        count as usize,
+                    );
                 }
             }
             // DCH - delete characters
@@ -390,7 +413,11 @@ impl<'a> Handler for TerminalHandler<'a> {
                 let count = (n as usize).min(w - x);
                 // Shift cells left
                 for col in x..w - count {
-                    let src = t.buffer.cell(col + count, y).cloned().unwrap_or_else(Cell::blank);
+                    let src = t
+                        .buffer
+                        .cell(col + count, y)
+                        .cloned()
+                        .unwrap_or_else(Cell::blank);
                     if let Some(dst) = t.buffer.cell_mut(col, y) {
                         *dst = src;
                     }
@@ -411,7 +438,11 @@ impl<'a> Handler for TerminalHandler<'a> {
                 let count = (n as usize).min(w - x);
                 // Shift cells right
                 for col in (x + count..w).rev() {
-                    let src = t.buffer.cell(col - count, y).cloned().unwrap_or_else(Cell::blank);
+                    let src = t
+                        .buffer
+                        .cell(col - count, y)
+                        .cloned()
+                        .unwrap_or_else(Cell::blank);
                     if let Some(dst) = t.buffer.cell_mut(col, y) {
                         *dst = src;
                     }
@@ -488,9 +519,8 @@ impl<'a> Handler for TerminalHandler<'a> {
                     }
                 } else {
                     for &p in params {
-                        match p {
-                            4 => t.insert_mode = set,
-                            _ => {}
+                        if p == 4 {
+                            t.insert_mode = set;
                         }
                     }
                 }
@@ -555,7 +585,11 @@ impl<'a> Handler for TerminalHandler<'a> {
 
 /// Get parameter at index, falling back to a default.
 fn param(params: &[i32], idx: usize, default: i32) -> i32 {
-    params.get(idx).copied().filter(|&v| v != 0).unwrap_or(default)
+    params
+        .get(idx)
+        .copied()
+        .filter(|&v| v != 0)
+        .unwrap_or(default)
 }
 
 /// Erase from (x, y) to end of line.
@@ -570,10 +604,10 @@ fn erase_line_from(t: &mut Terminal, x: u16, y: u16) {
 /// Erase from start of line to (x, y) inclusive.
 fn erase_line_to(t: &mut Terminal, x: u16, y: u16) {
     for col in 0..=x as usize {
-        if col < t.width as usize {
-            if let Some(cell) = t.buffer.cell_mut(col, y as usize) {
-                cell.make_blank();
-            }
+        if col < t.width as usize
+            && let Some(cell) = t.buffer.cell_mut(col, y as usize)
+        {
+            cell.make_blank();
         }
     }
 }

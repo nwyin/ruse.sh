@@ -15,11 +15,7 @@ impl ListItem for TodoItem {
     }
 
     fn description(&self) -> &str {
-        if self.done {
-            "done"
-        } else {
-            "pending"
-        }
+        if self.done { "done" } else { "pending" }
     }
 }
 
@@ -44,11 +40,7 @@ impl TodoApp {
             .iter()
             .map(|item| {
                 Box::new(SimpleItem {
-                    title: format!(
-                        "{} {}",
-                        if item.done { "[x]" } else { "[ ]" },
-                        item.title
-                    ),
+                    title: format!("{} {}", if item.done { "[x]" } else { "[ ]" }, item.title),
                     desc: if item.done {
                         "done".to_string()
                     } else {
@@ -75,7 +67,7 @@ impl Model for TodoApp {
                     match key.code {
                         KeyCode::Char('q') | KeyCode::Escape => return quit(),
                         KeyCode::Char('c') if key.modifiers.contains(Modifiers::CTRL) => {
-                            return quit()
+                            return quit();
                         }
                         KeyCode::Char('a') => {
                             self.state = AppState::Adding;
@@ -182,11 +174,26 @@ impl Model for TodoApp {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let items = vec![
-        TodoItem { title: "Buy groceries".into(), done: false },
-        TodoItem { title: "Write Rust code".into(), done: true },
-        TodoItem { title: "Read a book".into(), done: false },
-        TodoItem { title: "Go for a walk".into(), done: false },
-        TodoItem { title: "Learn ruse.sh".into(), done: true },
+        TodoItem {
+            title: "Buy groceries".into(),
+            done: false,
+        },
+        TodoItem {
+            title: "Write Rust code".into(),
+            done: true,
+        },
+        TodoItem {
+            title: "Read a book".into(),
+            done: false,
+        },
+        TodoItem {
+            title: "Go for a walk".into(),
+            done: false,
+        },
+        TodoItem {
+            title: "Learn ruse.sh".into(),
+            done: true,
+        },
     ];
 
     let model = TodoApp {

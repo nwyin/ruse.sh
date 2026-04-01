@@ -27,11 +27,7 @@ impl SpringDemo {
             x: 0.0,
             x_vel: 0.0,
             target_x: 50.0,
-            spring: ruse::harmonica::Spring::new(
-                ruse::harmonica::fps(FPS),
-                FREQUENCY,
-                DAMPING,
-            ),
+            spring: ruse::harmonica::Spring::new(ruse::harmonica::fps(FPS), FREQUENCY, DAMPING),
             settled: false,
         }
     }
@@ -57,8 +53,7 @@ impl Model for SpringDemo {
                 return quit();
             }
 
-            (self.x, self.x_vel) =
-                self.spring.update(self.x, self.x_vel, self.target_x);
+            (self.x, self.x_vel) = self.spring.update(self.x, self.x_vel, self.target_x);
 
             if (self.x - self.target_x).abs() < 0.01 && self.x_vel.abs() < 0.01 {
                 self.settled = true;
@@ -79,22 +74,16 @@ impl Model for SpringDemo {
             .foreground(Color::parse("#FF6600"))
             .render(&["Spring Demo"]);
 
-        let info = Style::new()
-            .faint(true)
-            .render(&[&format!(
-                "  x={:.1}  vel={:.1}  target={}  freq={}  damping={}",
-                self.x, self.x_vel, self.target_x, FREQUENCY, DAMPING
-            )]);
+        let info = Style::new().faint(true).render(&[&format!(
+            "  x={:.1}  vel={:.1}  target={}  freq={}  damping={}",
+            self.x, self.x_vel, self.target_x, FREQUENCY, DAMPING
+        )]);
 
         let sprite_inner = "/".repeat(SPRITE_WIDTH);
         let sprite_style = Style::new()
             .foreground(Color::parse("#FFFDF5"))
             .background(Color::parse("#575BD8"));
-        let sprite_row = format!(
-            "{}{}",
-            " ".repeat(x),
-            sprite_style.render(&[&sprite_inner])
-        );
+        let sprite_row = format!("{}{}", " ".repeat(x), sprite_style.render(&[&sprite_inner]));
 
         let sprite_block = (0..SPRITE_HEIGHT)
             .map(|_| sprite_row.as_str())
@@ -105,9 +94,7 @@ impl Model for SpringDemo {
             .faint(true)
             .render(&["  Press any key to quit"]);
 
-        let content = format!(
-            "\n  {title}\n  {info}\n\n{sprite_block}\n\n{help}\n"
-        );
+        let content = format!("\n  {title}\n  {info}\n\n{sprite_block}\n\n{help}\n");
 
         View::new(content).with_alt_screen()
     }

@@ -452,16 +452,30 @@ pub fn ascii_theme() -> StyleConfig {
             s.indent_token = Some("| ".into());
         }),
         paragraph: sp(),
-        list: StyleList { level_indent: Some(4) },
+        list: StyleList {
+            level_indent: Some(4),
+        },
         heading: prim(|s| {
             s.block_suffix = Some("\n".into());
         }),
-        h1: prim(|s| { s.prefix = Some("# ".into()); }),
-        h2: prim(|s| { s.prefix = Some("## ".into()); }),
-        h3: prim(|s| { s.prefix = Some("### ".into()); }),
-        h4: prim(|s| { s.prefix = Some("#### ".into()); }),
-        h5: prim(|s| { s.prefix = Some("##### ".into()); }),
-        h6: prim(|s| { s.prefix = Some("###### ".into()); }),
+        h1: prim(|s| {
+            s.prefix = Some("# ".into());
+        }),
+        h2: prim(|s| {
+            s.prefix = Some("## ".into());
+        }),
+        h3: prim(|s| {
+            s.prefix = Some("### ".into());
+        }),
+        h4: prim(|s| {
+            s.prefix = Some("#### ".into());
+        }),
+        h5: prim(|s| {
+            s.prefix = Some("##### ".into());
+        }),
+        h6: prim(|s| {
+            s.prefix = Some("###### ".into());
+        }),
         text: sp(),
         strikethrough: prim(|s| {
             s.block_prefix = Some("~~".into());
@@ -499,7 +513,9 @@ pub fn ascii_theme() -> StyleConfig {
             s.block_suffix = Some("`".into());
         }),
         code_block: StyleCodeBlock {
-            style: prim(|s| { s.margin = Some(2); }),
+            style: prim(|s| {
+                s.margin = Some(2);
+            }),
             theme: None,
         },
         table: StyleTable {
@@ -533,7 +549,9 @@ pub fn pink_theme() -> StyleConfig {
             s.indent_token = Some("\u{2502} ".into());
         }),
         paragraph: sp(),
-        list: StyleList { level_indent: Some(2) },
+        list: StyleList {
+            level_indent: Some(2),
+        },
         heading: prim(|s| {
             s.block_suffix = Some("\n".into());
             s.color = Some("212".into());
@@ -543,10 +561,18 @@ pub fn pink_theme() -> StyleConfig {
             s.block_prefix = Some("\n".into());
             s.block_suffix = Some("\n".into());
         }),
-        h2: prim(|s| { s.prefix = Some("\u{258c} ".into()); }),
-        h3: prim(|s| { s.prefix = Some("\u{2503} ".into()); }),
-        h4: prim(|s| { s.prefix = Some("\u{2502} ".into()); }),
-        h5: prim(|s| { s.prefix = Some("\u{2506} ".into()); }),
+        h2: prim(|s| {
+            s.prefix = Some("\u{258c} ".into());
+        }),
+        h3: prim(|s| {
+            s.prefix = Some("\u{2503} ".into());
+        }),
+        h4: prim(|s| {
+            s.prefix = Some("\u{2502} ".into());
+        }),
+        h5: prim(|s| {
+            s.prefix = Some("\u{2506} ".into());
+        }),
         h6: prim(|s| {
             s.prefix = Some("\u{250a} ".into());
             s.bold = Some(false);

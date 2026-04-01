@@ -12,29 +12,26 @@ pub fn strip_ansi(s: &str) -> String {
                 Some('[') => {
                     // CSI sequence: ESC[ followed by params until a byte in 0x40-0x7E
                     chars.next(); // consume '['
-                    loop {
-                        match chars.next() {
-                            Some(c) if ('@'..='~').contains(&c) => break,
-                            Some(_) => continue,
-                            None => break,
+                    for c in chars.by_ref() {
+                        if ('@'..='~').contains(&c) {
+                            break;
                         }
                     }
                 }
                 Some(']') => {
                     // OSC sequence: ESC] ... terminated by BEL (0x07) or ST (ESC\)
                     chars.next(); // consume ']'
-                    loop {
-                        match chars.next() {
-                            Some('\x07') => break,
-                            Some('\x1b') => {
+                    while let Some(c) = chars.next() {
+                        match c {
+                            '\x07' => break,
+                            '\x1b' => {
                                 // Check for ST = ESC backslash
                                 if chars.peek() == Some(&'\\') {
                                     chars.next();
                                 }
                                 break;
                             }
-                            Some(_) => continue,
-                            None => break,
+                            _ => continue,
                         }
                     }
                 }

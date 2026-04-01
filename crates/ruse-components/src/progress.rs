@@ -48,8 +48,16 @@ impl Progress {
             width: DEFAULT_WIDTH,
             full_char: '█',
             empty_char: '░',
-            full_color: Color::Rgb { r: 100, g: 200, b: 100 },
-            empty_color: Color::Rgb { r: 80, g: 80, b: 80 },
+            full_color: Color::Rgb {
+                r: 100,
+                g: 200,
+                b: 100,
+            },
+            empty_color: Color::Rgb {
+                r: 80,
+                g: 80,
+                b: 80,
+            },
             show_percentage: true,
             percent: 0.0,
             target_percent: 0.0,
@@ -106,7 +114,9 @@ impl Progress {
             if frame.id != self.id || frame.tag != self.tag {
                 return None;
             }
-            let (new_pos, new_vel) = self.spring.update(self.percent, self.velocity, self.target_percent);
+            let (new_pos, new_vel) =
+                self.spring
+                    .update(self.percent, self.velocity, self.target_percent);
             self.percent = new_pos;
             self.velocity = new_vel;
 
@@ -167,7 +177,11 @@ impl Progress {
         }
 
         // Determine the reference width for interpolation
-        let ref_width = if self.scale_gradient { self.width } else { filled };
+        let ref_width = if self.scale_gradient {
+            self.width
+        } else {
+            filled
+        };
         if ref_width <= 1 {
             return colors[0];
         }
@@ -193,7 +207,18 @@ impl Progress {
 /// color is not RGB.
 fn lerp_color(a: Color, b: Color, t: f64) -> Color {
     match (a, b) {
-        (Color::Rgb { r: r1, g: g1, b: b1 }, Color::Rgb { r: r2, g: g2, b: b2 }) => {
+        (
+            Color::Rgb {
+                r: r1,
+                g: g1,
+                b: b1,
+            },
+            Color::Rgb {
+                r: r2,
+                g: g2,
+                b: b2,
+            },
+        ) => {
             let t = t.clamp(0.0, 1.0);
             Color::Rgb {
                 r: (r1 as f64 + (r2 as f64 - r1 as f64) * t).round() as u8,

@@ -8,7 +8,11 @@ use crate::SgrStyle;
 ///
 /// Pixels are in RGB format (3 bytes per pixel).
 pub fn render_mosaic(pixels: &[u8], width: u32, height: u32) -> String {
-    assert_eq!(pixels.len(), (width * height * 3) as usize, "pixel data must be width*height*3 bytes (RGB)");
+    assert_eq!(
+        pixels.len(),
+        (width * height * 3) as usize,
+        "pixel data must be width*height*3 bytes (RGB)"
+    );
 
     let w = width as usize;
     let h = height as usize;
@@ -30,9 +34,7 @@ pub fn render_mosaic(pixels: &[u8], width: u32, height: u32) -> String {
                 let bot_idx = ((y + 1) * w + x) * 3;
                 let (br, bg, bb) = (pixels[bot_idx], pixels[bot_idx + 1], pixels[bot_idx + 2]);
 
-                let sgr = SgrStyle::new()
-                    .fg_rgb(br, bg, bb)
-                    .bg_rgb(tr, tg, tb);
+                let sgr = SgrStyle::new().fg_rgb(br, bg, bb).bg_rgb(tr, tg, tb);
                 out.push_str(&sgr.styled("\u{2584}")); // ▄
             } else {
                 // Odd last row: top only, use upper half block with fg

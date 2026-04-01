@@ -22,7 +22,12 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
-        Self { x, y, width, height }
+        Self {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     pub fn contains(&self, px: u16, py: u16) -> bool {

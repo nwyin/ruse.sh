@@ -1,5 +1,4 @@
 /// Layer/Compositor/Canvas system for compositing overlapping text regions.
-
 use std::collections::HashMap;
 
 /// A hierarchical layer: content positioned at `(x, y)` with a z-order.
@@ -58,7 +57,11 @@ impl Compositor {
         flatten(root, 0, 0, &mut layers);
         layers.sort_by_key(|l| l.z);
 
-        let index: HashMap<String, usize> = layers.iter().enumerate().map(|(i, l)| (l.id.clone(), i)).collect();
+        let index: HashMap<String, usize> = layers
+            .iter()
+            .enumerate()
+            .map(|(i, l)| (l.id.clone(), i))
+            .collect();
 
         Self { layers, index }
     }
@@ -155,7 +158,11 @@ fn flatten(layer: &Layer, parent_x: i32, parent_y: i32, out: &mut Vec<FlatLayer>
 
     let lines: Vec<&str> = layer.content.split('\n').collect();
     let height = lines.len() as u32;
-    let width = lines.iter().map(|l| l.chars().count() as u32).max().unwrap_or(0);
+    let width = lines
+        .iter()
+        .map(|l| l.chars().count() as u32)
+        .max()
+        .unwrap_or(0);
 
     out.push(FlatLayer {
         id: layer.id.clone(),
@@ -208,7 +215,8 @@ mod tests {
     fn test_draw_order() {
         // Two overlapping 1-char layers at the same position.
         // Higher z should win.
-        let root = Layer::new("bg", "X", 0, 0, 0).with_children(vec![Layer::new("fg", "O", 0, 0, 1)]);
+        let root =
+            Layer::new("bg", "X", 0, 0, 0).with_children(vec![Layer::new("fg", "O", 0, 0, 1)]);
         let comp = Compositor::new(&root);
         let result = comp.draw();
         assert_eq!(result, "O");
@@ -235,7 +243,8 @@ mod tests {
 
     #[test]
     fn test_hit_test_highest_z() {
-        let root = Layer::new("bg", "XXX", 0, 0, 0).with_children(vec![Layer::new("fg", "O", 0, 0, 1)]);
+        let root =
+            Layer::new("bg", "XXX", 0, 0, 0).with_children(vec![Layer::new("fg", "O", 0, 0, 1)]);
         let comp = Compositor::new(&root);
         // (0,0) is covered by both bg (z=0, width=3) and fg (z=1, width=1)
         assert_eq!(comp.hit_test(0, 0), Some("fg"));
@@ -258,7 +267,8 @@ mod tests {
     #[test]
     fn test_draw_offset_layers() {
         // Child at offset, verifying canvas expands correctly.
-        let root = Layer::new("root", "R", 0, 0, 0).with_children(vec![Layer::new("child", "C", 3, 1, 1)]);
+        let root =
+            Layer::new("root", "R", 0, 0, 0).with_children(vec![Layer::new("child", "C", 3, 1, 1)]);
         let comp = Compositor::new(&root);
         let result = comp.draw();
         let lines: Vec<&str> = result.lines().collect();

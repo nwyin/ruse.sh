@@ -135,22 +135,22 @@ impl Table {
                 self.cursor = self.cursor.saturating_sub(self.visible_rows());
                 self.ensure_cursor_visible();
             } else if self.key_map.page_down.matches(key) {
-                self.cursor = (self.cursor + self.visible_rows()).min(self.rows.len().saturating_sub(1));
+                self.cursor =
+                    (self.cursor + self.visible_rows()).min(self.rows.len().saturating_sub(1));
                 self.ensure_cursor_visible();
             } else if self.key_map.half_page_up.matches(key) {
                 self.cursor = self.cursor.saturating_sub(self.visible_rows() / 2);
                 self.ensure_cursor_visible();
             } else if self.key_map.half_page_down.matches(key) {
-                self.cursor = (self.cursor + self.visible_rows() / 2).min(self.rows.len().saturating_sub(1));
+                self.cursor =
+                    (self.cursor + self.visible_rows() / 2).min(self.rows.len().saturating_sub(1));
                 self.ensure_cursor_visible();
             } else if self.key_map.goto_top.matches(key) {
                 self.cursor = 0;
                 self.ensure_cursor_visible();
-            } else if self.key_map.goto_bottom.matches(key) {
-                if !self.rows.is_empty() {
-                    self.cursor = self.rows.len() - 1;
-                    self.ensure_cursor_visible();
-                }
+            } else if self.key_map.goto_bottom.matches(key) && !self.rows.is_empty() {
+                self.cursor = self.rows.len() - 1;
+                self.ensure_cursor_visible();
             }
         }
         None
@@ -165,7 +165,11 @@ impl Table {
 
         // Header
         let header = self.render_row_cells(
-            &self.columns.iter().map(|c| c.title.clone()).collect::<Vec<_>>(),
+            &self
+                .columns
+                .iter()
+                .map(|c| c.title.clone())
+                .collect::<Vec<_>>(),
             &self.styles.header,
         );
         out.push_str(&header);

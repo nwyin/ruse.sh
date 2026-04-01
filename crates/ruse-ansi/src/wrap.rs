@@ -192,7 +192,10 @@ fn tokenize(s: &str) -> Vec<Token> {
             }
         } else if ch == ' ' {
             if !current_word.is_empty() {
-                tokens.push(Token::Word(std::mem::take(&mut current_word), current_width));
+                tokens.push(Token::Word(
+                    std::mem::take(&mut current_word),
+                    current_width,
+                ));
                 current_width = 0;
             }
             tokens.push(Token::Space);
@@ -219,35 +222,29 @@ fn consume_escape(chars: &mut std::iter::Peekable<std::str::Chars<'_>>, esc: cha
     match chars.peek() {
         Some(&'[') => {
             seq.push(chars.next().unwrap());
-            loop {
-                match chars.next() {
-                    Some(c) => {
-                        seq.push(c);
-                        if ('@'..='~').contains(&c) {
-                            break;
-                        }
-                    }
-                    None => break,
+            for c in chars.by_ref() {
+                seq.push(c);
+                if ('@'..='~').contains(&c) {
+                    break;
                 }
             }
         }
         Some(&']') => {
             seq.push(chars.next().unwrap());
-            loop {
-                match chars.next() {
-                    Some('\x07') => {
+            while let Some(c) = chars.next() {
+                match c {
+                    '\x07' => {
                         seq.push('\x07');
                         break;
                     }
-                    Some('\x1b') => {
+                    '\x1b' => {
                         seq.push('\x1b');
                         if chars.peek() == Some(&'\\') {
                             seq.push(chars.next().unwrap());
                         }
                         break;
                     }
-                    Some(c) => seq.push(c),
-                    None => break,
+                    _ => seq.push(c),
                 }
             }
         }
@@ -358,10 +355,18 @@ mod tests {
         let stripped = strip_ansi(&result);
         // First line should have content
         let lines: Vec<&str> = stripped.lines().collect();
-        assert!(lines[0].starts_with("  hello"), "first line: {:?}", lines[0]);
+        assert!(
+            lines[0].starts_with("  hello"),
+            "first line: {:?}",
+            lines[0]
+        );
         // Continuation lines should preserve the 2-space indent
         for line in &lines[1..] {
-            assert!(line.starts_with("  "), "continuation line should be indented: {:?}", line);
+            assert!(
+                line.starts_with("  "),
+                "continuation line should be indented: {:?}",
+                line
+            );
         }
     }
 
@@ -377,7 +382,11 @@ mod tests {
         let result = wordwrap(s, 14);
         let stripped = strip_ansi(&result);
         for line in stripped.lines() {
-            assert!(line.starts_with("  "), "all lines should be indented: {:?}", line);
+            assert!(
+                line.starts_with("  "),
+                "all lines should be indented: {:?}",
+                line
+            );
         }
     }
 }

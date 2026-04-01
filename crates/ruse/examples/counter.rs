@@ -22,9 +22,7 @@ impl Model for Counter {
     }
 
     fn view(&self) -> View {
-        let title_style = Style::new()
-            .bold(true)
-            .foreground(Color::parse("#ff6600"));
+        let title_style = Style::new().bold(true).foreground(Color::parse("#ff6600"));
 
         let count_style = Style::new()
             .bold(true)

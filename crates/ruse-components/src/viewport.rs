@@ -1,4 +1,4 @@
-use ruse_runtime::{Cmd, Msg, MouseButton};
+use ruse_runtime::{Cmd, MouseButton, Msg};
 use ruse_style::Style;
 
 use crate::key::Binding;
@@ -261,8 +261,6 @@ impl Viewport {
                     let padding = content_width - w;
                     format!("{}{}", styled_line, " ".repeat(padding))
                 }
-            } else if self.width > 0 {
-                styled_line
             } else {
                 styled_line
             };

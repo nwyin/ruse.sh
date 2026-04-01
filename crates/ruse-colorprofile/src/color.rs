@@ -403,7 +403,14 @@ mod tests {
     #[test]
     fn test_parse_hex_long() {
         let c = Color::parse("#ff8537");
-        assert_eq!(c, Color::Rgb { r: 255, g: 133, b: 55 });
+        assert_eq!(
+            c,
+            Color::Rgb {
+                r: 255,
+                g: 133,
+                b: 55
+            }
+        );
     }
 
     #[test]
@@ -442,7 +449,11 @@ mod tests {
 
     #[test]
     fn test_to_rgb_rgb() {
-        let c = Color::Rgb { r: 10, g: 20, b: 30 };
+        let c = Color::Rgb {
+            r: 10,
+            g: 20,
+            b: 30,
+        };
         assert_eq!(c.to_rgb(), Some((10, 20, 30)));
     }
 

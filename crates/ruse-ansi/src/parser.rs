@@ -3,7 +3,6 @@
 /// Implements parsing for CSI, OSC, DCS, APC, PM, and SOS escape sequences
 /// per the DEC VT specification. Bytes are fed one at a time via [`Parser::advance`],
 /// and decoded events are dispatched to a [`Handler`] implementor.
-
 const MAX_PARAMS: usize = 32;
 const MAX_DATA: usize = 64 * 1024;
 
@@ -136,7 +135,11 @@ impl Parser {
     fn in_string_state(&self) -> bool {
         matches!(
             self.state,
-            State::OscString | State::DcsString | State::SosString | State::PmString | State::ApcString
+            State::OscString
+                | State::DcsString
+                | State::SosString
+                | State::PmString
+                | State::ApcString
         )
     }
 
@@ -636,7 +639,8 @@ mod tests {
         }
 
         fn csi_dispatch(&mut self, params: &[i32], intermediates: &[u8], final_byte: u8) {
-            self.csi_calls.push((params.to_vec(), intermediates.to_vec(), final_byte));
+            self.csi_calls
+                .push((params.to_vec(), intermediates.to_vec(), final_byte));
         }
 
         fn esc_dispatch(&mut self, intermediates: &[u8], final_byte: u8) {
@@ -648,7 +652,8 @@ mod tests {
         }
 
         fn dcs_dispatch(&mut self, params: &[i32], intermediates: &[u8], data: &[u8]) {
-            self.dcs_calls.push((params.to_vec(), intermediates.to_vec(), data.to_vec()));
+            self.dcs_calls
+                .push((params.to_vec(), intermediates.to_vec(), data.to_vec()));
         }
 
         fn apc_dispatch(&mut self, data: &[u8]) {
@@ -784,9 +789,9 @@ mod tests {
         // Bold, then red fg, then text, then reset
         let rec = parse(b"\x1b[1m\x1b[31mhello\x1b[0m");
         assert_eq!(rec.csi_calls.len(), 3);
-        assert_eq!(rec.csi_calls[0].0, vec![1]);   // bold
-        assert_eq!(rec.csi_calls[1].0, vec![31]);  // red
-        assert_eq!(rec.csi_calls[2].0, vec![0]);   // reset
+        assert_eq!(rec.csi_calls[0].0, vec![1]); // bold
+        assert_eq!(rec.csi_calls[1].0, vec![31]); // red
+        assert_eq!(rec.csi_calls[2].0, vec![0]); // reset
         assert_eq!(rec.prints, vec!['h', 'e', 'l', 'l', 'o']);
     }
 
@@ -919,7 +924,10 @@ mod tests {
     #[test]
     fn test_utf8_mixed_with_ansi() {
         let rec = parse("héllo \x1b[1mwörld\x1b[0m".as_bytes());
-        assert_eq!(rec.prints, vec!['h', 'é', 'l', 'l', 'o', ' ', 'w', 'ö', 'r', 'l', 'd']);
+        assert_eq!(
+            rec.prints,
+            vec!['h', 'é', 'l', 'l', 'o', ' ', 'w', 'ö', 'r', 'l', 'd']
+        );
         assert_eq!(rec.csi_calls.len(), 2);
     }
 

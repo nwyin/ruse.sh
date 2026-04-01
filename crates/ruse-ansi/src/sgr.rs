@@ -9,7 +9,9 @@ pub struct SgrStyle {
 
 impl SgrStyle {
     pub fn new() -> Self {
-        Self { params: String::new() }
+        Self {
+            params: String::new(),
+        }
     }
 
     fn push_param(mut self, param: &str) -> Self {
@@ -95,7 +97,11 @@ impl SgrStyle {
 
     // Foreground colors
     pub fn fg_basic(self, color: u8) -> Self {
-        let code = if color < 8 { 30 + color } else { 90 + (color - 8) };
+        let code = if color < 8 {
+            30 + color
+        } else {
+            90 + (color - 8)
+        };
         self.push_num(code)
     }
 
@@ -109,7 +115,11 @@ impl SgrStyle {
 
     // Background colors
     pub fn bg_basic(self, color: u8) -> Self {
-        let code = if color < 8 { 40 + color } else { 100 + (color - 8) };
+        let code = if color < 8 {
+            40 + color
+        } else {
+            100 + (color - 8)
+        };
         self.push_num(code)
     }
 
@@ -272,7 +282,14 @@ mod tests {
 
     #[test]
     fn test_all_attributes() {
-        let s = SgrStyle::new().bold().faint().italic().underline().blink().reverse().strikethrough();
+        let s = SgrStyle::new()
+            .bold()
+            .faint()
+            .italic()
+            .underline()
+            .blink()
+            .reverse()
+            .strikethrough();
         assert_eq!(s.open(), "\x1b[1;2;3;4;5;7;9m");
     }
 

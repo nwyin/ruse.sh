@@ -5,7 +5,7 @@ use ruse_style::Style;
 
 use crate::key::Binding;
 use crate::paginator::Paginator;
-use crate::spinner::{dot_spinner, Spinner};
+use crate::spinner::{Spinner, dot_spinner};
 use crate::textinput::TextInput;
 
 /// Represents the current filter state of a List.
@@ -139,9 +139,7 @@ impl List {
             items,
             filtered_indices: indices,
             cursor: 0,
-            filter_input: TextInput::new()
-                .with_prompt("Filter: ")
-                .with_width(width),
+            filter_input: TextInput::new().with_prompt("Filter: ").with_width(width),
             filtering: false,
             filter_text: String::new(),
             width,
@@ -356,8 +354,11 @@ impl List {
                     format!("{filtered}/{total} items")
                 };
                 // Add paginator if items exceed visible area
-                if self.show_paginator && self.filtered_indices.len() > item_height && item_height > 0 {
-                    let total_pages = (self.filtered_indices.len() + item_height - 1) / item_height;
+                if self.show_paginator
+                    && self.filtered_indices.len() > item_height
+                    && item_height > 0
+                {
+                    let total_pages = self.filtered_indices.len().div_ceil(item_height);
                     let current_page = self.y_offset / item_height;
                     s.push_str(&format!("  {}/{total_pages}", current_page + 1));
                 }

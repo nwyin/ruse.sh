@@ -97,11 +97,7 @@ pub fn every(
 /// Command to execute an external process (e.g., vim, shell).
 /// The terminal is released before exec and restored after.
 /// The callback receives the exit status.
-pub fn exec<F>(
-    program: impl Into<String> + Send + 'static,
-    args: Vec<String>,
-    on_finish: F,
-) -> Cmd
+pub fn exec<F>(program: impl Into<String> + Send + 'static, args: Vec<String>, on_finish: F) -> Cmd
 where
     F: FnOnce(std::io::Result<std::process::ExitStatus>) -> Msg + Send + 'static,
 {
@@ -154,7 +150,7 @@ pub fn set_progress(state: u8, progress: u8) -> Cmd {
 /// Simple base64 encoding (no external dependency needed).
 fn base64_encode(data: &[u8]) -> String {
     const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut result = String::with_capacity((data.len() + 2) / 3 * 4);
+    let mut result = String::with_capacity(data.len().div_ceil(3) * 4);
     for chunk in data.chunks(3) {
         let b0 = chunk[0] as u32;
         let b1 = if chunk.len() > 1 { chunk[1] as u32 } else { 0 };

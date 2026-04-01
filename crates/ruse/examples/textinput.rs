@@ -78,11 +78,7 @@ impl Model for Form {
             }
 
             content.push(String::new());
-            content.push(
-                Style::new()
-                    .faint(true)
-                    .render(&["Press any key to quit"]),
-            );
+            content.push(Style::new().faint(true).render(&["Press any key to quit"]));
         } else {
             for (i, input) in self.inputs.iter().enumerate() {
                 let indicator = if i == self.focus_index {

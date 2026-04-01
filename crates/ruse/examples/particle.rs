@@ -84,12 +84,13 @@ impl Model for ParticleDemo {
             .foreground(Color::parse("#FF6600"))
             .render(&["Particle Demo"]);
 
-        let info = Style::new()
-            .faint(true)
-            .render(&[&format!("  pos=({:.1}, {:.1})  vel=({:.1}, {:.1})",
-                self.pos.x, self.pos.y,
-                self.projectile.velocity().x, self.projectile.velocity().y,
-            )]);
+        let info = Style::new().faint(true).render(&[&format!(
+            "  pos=({:.1}, {:.1})  vel=({:.1}, {:.1})",
+            self.pos.x,
+            self.pos.y,
+            self.projectile.velocity().x,
+            self.projectile.velocity().y,
+        )]);
 
         // Build a grid
         let max_y = self.height.saturating_sub(4);
@@ -110,9 +111,7 @@ impl Model for ParticleDemo {
 
         // Render grid with styling
         let trail_style = Style::new().foreground(Color::parse("#555555"));
-        let ball_style = Style::new()
-            .bold(true)
-            .foreground(Color::parse("#FF6600"));
+        let ball_style = Style::new().bold(true).foreground(Color::parse("#FF6600"));
 
         let mut lines = Vec::new();
         for row in &grid {
@@ -131,10 +130,7 @@ impl Model for ParticleDemo {
             .faint(true)
             .render(&["  Press any key to quit"]);
 
-        let content = format!(
-            "  {title}  {info}\n{}\n{help}",
-            lines.join("\n")
-        );
+        let content = format!("  {title}  {info}\n{}\n{help}", lines.join("\n"));
 
         View::new(content).with_alt_screen()
     }

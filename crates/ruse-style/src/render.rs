@@ -16,11 +16,39 @@ impl Style {
         let reverse = self.get_bool(Props::REVERSE);
         let blink = self.get_bool(Props::BLINK);
         let faint = self.get_bool(Props::FAINT);
-        let fg = if self.is_set(Props::FOREGROUND) { self.fg } else { Color::NoColor };
-        let bg = if self.is_set(Props::BACKGROUND) { self.bg } else { Color::NoColor };
-        let ul_style = if self.is_set(Props::UNDERLINE_STYLE) { self.underline_style } else { UnderlineStyle::None };
-        let ul_color = if self.is_set(Props::UNDERLINE_COLOR) { self.underline_color } else { Color::NoColor };
-        build_sgr(bold, italic, underline, strikethrough, reverse, blink, faint, fg, bg, ul_style, ul_color)
+        let fg = if self.is_set(Props::FOREGROUND) {
+            self.fg
+        } else {
+            Color::NoColor
+        };
+        let bg = if self.is_set(Props::BACKGROUND) {
+            self.bg
+        } else {
+            Color::NoColor
+        };
+        let ul_style = if self.is_set(Props::UNDERLINE_STYLE) {
+            self.underline_style
+        } else {
+            UnderlineStyle::None
+        };
+        let ul_color = if self.is_set(Props::UNDERLINE_COLOR) {
+            self.underline_color
+        } else {
+            Color::NoColor
+        };
+        build_sgr(
+            bold,
+            italic,
+            underline,
+            strikethrough,
+            reverse,
+            blink,
+            faint,
+            fg,
+            bg,
+            ul_style,
+            ul_color,
+        )
     }
 
     /// Render one or more strings with this style applied.
@@ -42,18 +70,58 @@ impl Style {
         let blink = self.get_bool(Props::BLINK);
         let faint = self.get_bool(Props::FAINT);
 
-        let fg = if self.is_set(Props::FOREGROUND) { self.fg } else { Color::NoColor };
-        let bg = if self.is_set(Props::BACKGROUND) { self.bg } else { Color::NoColor };
-        let ul_style = if self.is_set(Props::UNDERLINE_STYLE) { self.underline_style } else { UnderlineStyle::None };
-        let ul_color = if self.is_set(Props::UNDERLINE_COLOR) { self.underline_color } else { Color::NoColor };
+        let fg = if self.is_set(Props::FOREGROUND) {
+            self.fg
+        } else {
+            Color::NoColor
+        };
+        let bg = if self.is_set(Props::BACKGROUND) {
+            self.bg
+        } else {
+            Color::NoColor
+        };
+        let ul_style = if self.is_set(Props::UNDERLINE_STYLE) {
+            self.underline_style
+        } else {
+            UnderlineStyle::None
+        };
+        let ul_color = if self.is_set(Props::UNDERLINE_COLOR) {
+            self.underline_color
+        } else {
+            Color::NoColor
+        };
 
-        let width = if self.is_set(Props::WIDTH) { self.width as usize } else { 0 };
-        let height = if self.is_set(Props::HEIGHT) { self.height as usize } else { 0 };
-        let max_w = if self.is_set(Props::MAX_WIDTH) { self.max_width as usize } else { 0 };
-        let max_h = if self.is_set(Props::MAX_HEIGHT) { self.max_height as usize } else { 0 };
+        let width = if self.is_set(Props::WIDTH) {
+            self.width as usize
+        } else {
+            0
+        };
+        let height = if self.is_set(Props::HEIGHT) {
+            self.height as usize
+        } else {
+            0
+        };
+        let max_w = if self.is_set(Props::MAX_WIDTH) {
+            self.max_width as usize
+        } else {
+            0
+        };
+        let max_h = if self.is_set(Props::MAX_HEIGHT) {
+            self.max_height as usize
+        } else {
+            0
+        };
 
-        let h_align = if self.is_set(Props::ALIGN_H) { self.align_h } else { Position::LEFT };
-        let v_align = if self.is_set(Props::ALIGN_V) { self.align_v } else { Position::TOP };
+        let h_align = if self.is_set(Props::ALIGN_H) {
+            self.align_h
+        } else {
+            Position::LEFT
+        };
+        let v_align = if self.is_set(Props::ALIGN_V) {
+            self.align_v
+        } else {
+            Position::TOP
+        };
 
         let pt = self.padding_top as usize;
         let pr = self.padding_right as usize;
@@ -91,7 +159,19 @@ impl Style {
         }
 
         // 5. Apply text styling
-        let te = build_sgr(bold, italic, underline, strikethrough, reverse, blink, faint, fg, bg, ul_style, ul_color);
+        let te = build_sgr(
+            bold,
+            italic,
+            underline,
+            strikethrough,
+            reverse,
+            blink,
+            faint,
+            fg,
+            bg,
+            ul_style,
+            ul_color,
+        );
         let te_whitespace = build_whitespace_sgr(reverse, fg, bg, color_whitespace);
 
         {
@@ -211,7 +291,11 @@ impl Style {
     }
 
     fn convert_tabs(&self, s: &str) -> String {
-        let tw = if self.is_set(Props::TAB_WIDTH) { self.tab_width } else { 4 };
+        let tw = if self.is_set(Props::TAB_WIDTH) {
+            self.tab_width
+        } else {
+            4
+        };
         match tw {
             w if w < 0 => s.to_string(),
             0 => s.replace('\t', ""),
@@ -243,12 +327,20 @@ impl Style {
         let (lines, mut content_width) = get_lines(str);
 
         if has_left {
-            let left = if border.left.is_empty() { " " } else { border.left };
+            let left = if border.left.is_empty() {
+                " "
+            } else {
+                border.left
+            };
             content_width += string_width(left);
             border.left = left;
         }
         if has_right {
-            let right = if border.right.is_empty() { " " } else { border.right };
+            let right = if border.right.is_empty() {
+                " "
+            } else {
+                border.right
+            };
             content_width += string_width(right);
             border.right = right;
         }
@@ -291,21 +383,58 @@ impl Style {
         border.bottom_left = first_char_str(border.bottom_left);
         border.bottom_right = first_char_str(border.bottom_right);
 
-        let top_fg = if self.is_set(Props::BORDER_TOP_FG) { self.border_top_fg } else { Color::NoColor };
-        let right_fg = if self.is_set(Props::BORDER_RIGHT_FG) { self.border_right_fg } else { Color::NoColor };
-        let bottom_fg = if self.is_set(Props::BORDER_BOTTOM_FG) { self.border_bottom_fg } else { Color::NoColor };
-        let left_fg = if self.is_set(Props::BORDER_LEFT_FG) { self.border_left_fg } else { Color::NoColor };
+        let top_fg = if self.is_set(Props::BORDER_TOP_FG) {
+            self.border_top_fg
+        } else {
+            Color::NoColor
+        };
+        let right_fg = if self.is_set(Props::BORDER_RIGHT_FG) {
+            self.border_right_fg
+        } else {
+            Color::NoColor
+        };
+        let bottom_fg = if self.is_set(Props::BORDER_BOTTOM_FG) {
+            self.border_bottom_fg
+        } else {
+            Color::NoColor
+        };
+        let left_fg = if self.is_set(Props::BORDER_LEFT_FG) {
+            self.border_left_fg
+        } else {
+            Color::NoColor
+        };
 
-        let top_bg = if self.is_set(Props::BORDER_TOP_BG) { self.border_top_bg } else { Color::NoColor };
-        let right_bg = if self.is_set(Props::BORDER_RIGHT_BG) { self.border_right_bg } else { Color::NoColor };
-        let bottom_bg = if self.is_set(Props::BORDER_BOTTOM_BG) { self.border_bottom_bg } else { Color::NoColor };
-        let left_bg = if self.is_set(Props::BORDER_LEFT_BG) { self.border_left_bg } else { Color::NoColor };
+        let top_bg = if self.is_set(Props::BORDER_TOP_BG) {
+            self.border_top_bg
+        } else {
+            Color::NoColor
+        };
+        let right_bg = if self.is_set(Props::BORDER_RIGHT_BG) {
+            self.border_right_bg
+        } else {
+            Color::NoColor
+        };
+        let bottom_bg = if self.is_set(Props::BORDER_BOTTOM_BG) {
+            self.border_bottom_bg
+        } else {
+            Color::NoColor
+        };
+        let left_bg = if self.is_set(Props::BORDER_LEFT_BG) {
+            self.border_left_bg
+        } else {
+            Color::NoColor
+        };
 
         let mut out = String::new();
 
         // Render top
         if has_top {
-            let top_edge = render_horizontal_edge(border.top_left, border.top, border.top_right, content_width);
+            let top_edge = render_horizontal_edge(
+                border.top_left,
+                border.top,
+                border.top_right,
+                content_width,
+            );
             out.push_str(&style_border_str(&top_edge, top_fg, top_bg));
             out.push('\n');
         }
@@ -335,7 +464,12 @@ impl Style {
 
         // Render bottom
         if has_bottom {
-            let bottom_edge = render_horizontal_edge(border.bottom_left, border.bottom, border.bottom_right, content_width);
+            let bottom_edge = render_horizontal_edge(
+                border.bottom_left,
+                border.bottom,
+                border.bottom_right,
+                content_width,
+            );
             out.push('\n');
             out.push_str(&style_border_str(&bottom_edge, bottom_fg, bottom_bg));
         }
@@ -353,7 +487,11 @@ impl Style {
             return str.to_string();
         }
 
-        let margin_bg = if self.is_set(Props::MARGIN_BG) { self.margin_bg } else { Color::NoColor };
+        let margin_bg = if self.is_set(Props::MARGIN_BG) {
+            self.margin_bg
+        } else {
+            Color::NoColor
+        };
         let style = build_bg_sgr(margin_bg);
 
         let mut result = str.to_string();
@@ -361,12 +499,20 @@ impl Style {
         // Left/right margin
         if ml > 0 {
             let sp = " ".repeat(ml);
-            let pad = if style.is_empty() { sp } else { style.styled(&sp) };
+            let pad = if style.is_empty() {
+                sp
+            } else {
+                style.styled(&sp)
+            };
             result = pad_each_line_left(&result, &pad);
         }
         if mr > 0 {
             let sp = " ".repeat(mr);
-            let pad = if style.is_empty() { sp } else { style.styled(&sp) };
+            let pad = if style.is_empty() {
+                sp
+            } else {
+                style.styled(&sp)
+            };
             result = pad_each_line_right(&result, &pad);
         }
 
@@ -374,14 +520,22 @@ impl Style {
         if mt > 0 || mb > 0 {
             let (_, w) = get_lines(&result);
             let spaces = " ".repeat(w);
-            let empty_line = if style.is_empty() { spaces.clone() } else { style.styled(&spaces) };
+            let empty_line = if style.is_empty() {
+                spaces.clone()
+            } else {
+                style.styled(&spaces)
+            };
 
             if mt > 0 {
-                let top = (0..mt).map(|_| format!("{empty_line}\n")).collect::<String>();
+                let top = (0..mt)
+                    .map(|_| format!("{empty_line}\n"))
+                    .collect::<String>();
                 result = top + &result;
             }
             if mb > 0 {
-                let bottom = (0..mb).map(|_| format!("\n{empty_line}")).collect::<String>();
+                let bottom = (0..mb)
+                    .map(|_| format!("\n{empty_line}"))
+                    .collect::<String>();
                 result = result + &bottom;
             }
         }
@@ -391,6 +545,7 @@ impl Style {
 }
 
 /// Build the main text SGR style.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_sgr(
     bold: bool,
     italic: bool,
@@ -552,7 +707,12 @@ fn pad_each_line_right(s: &str, pad: &str) -> String {
     out
 }
 
-fn align_text_horizontal(str: &str, pos: Position, width: usize, style: Option<&SgrStyle>) -> String {
+fn align_text_horizontal(
+    str: &str,
+    pos: Position,
+    width: usize,
+    style: Option<&SgrStyle>,
+) -> String {
     let (lines, widest) = get_lines(str);
     let mut out = String::new();
 
@@ -565,20 +725,36 @@ fn align_text_horizontal(str: &str, pos: Position, width: usize, style: Option<&
         if short_amount > 0 {
             if pos == Position::RIGHT {
                 let sp = " ".repeat(short_amount);
-                let sp = if let Some(st) = style { st.styled(&sp) } else { sp };
+                let sp = if let Some(st) = style {
+                    st.styled(&sp)
+                } else {
+                    sp
+                };
                 l = sp + &l;
             } else if pos == Position::CENTER {
                 let left = short_amount / 2;
                 let right = left + short_amount % 2;
                 let left_sp = " ".repeat(left);
                 let right_sp = " ".repeat(right);
-                let left_sp = if let Some(st) = style { st.styled(&left_sp) } else { left_sp };
-                let right_sp = if let Some(st) = style { st.styled(&right_sp) } else { right_sp };
+                let left_sp = if let Some(st) = style {
+                    st.styled(&left_sp)
+                } else {
+                    left_sp
+                };
+                let right_sp = if let Some(st) = style {
+                    st.styled(&right_sp)
+                } else {
+                    right_sp
+                };
                 l = left_sp + &l + &right_sp;
             } else {
                 // Left alignment (default)
                 let sp = " ".repeat(short_amount);
-                let sp = if let Some(st) = style { st.styled(&sp) } else { sp };
+                let sp = if let Some(st) = style {
+                    st.styled(&sp)
+                } else {
+                    sp
+                };
                 l = l + &sp;
             }
         }

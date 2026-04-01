@@ -7,7 +7,8 @@ impl Profile {
     /// Detect terminal color profile from the current process environment.
     pub fn detect_env() -> Self {
         let vars: Vec<(String, String)> = env::vars().collect();
-        let env_map: Vec<(&str, &str)> = vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+        let env_map: Vec<(&str, &str)> =
+            vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
         Self::from_env(&env_map)
     }
 
@@ -101,7 +102,15 @@ fn env_color_profile(env: &HashMap<&str, &str>) -> Profile {
     };
 
     // Check for known TrueColor terminals
-    let tc_terms = ["alacritty", "contour", "foot", "ghostty", "kitty", "rio", "wezterm"];
+    let tc_terms = [
+        "alacritty",
+        "contour",
+        "foot",
+        "ghostty",
+        "kitty",
+        "rio",
+        "wezterm",
+    ];
     for t in &tc_terms {
         if term.contains(t) {
             return Profile::TrueColor;
@@ -110,18 +119,17 @@ fn env_color_profile(env: &HashMap<&str, &str>) -> Profile {
 
     // tmux / screen -> check for TrueColor capability via tmux info
     if term.starts_with("tmux") || term.starts_with("screen") {
-        if env.get("TMUX").is_some_and(|v| !v.is_empty()) {
-            if let Some(profile) = detect_tmux_truecolor() {
-                return profile;
-            }
+        if env.get("TMUX").is_some_and(|v| !v.is_empty())
+            && let Some(profile) = detect_tmux_truecolor()
+        {
+            return profile;
         }
         if p < Profile::Ansi256 {
             p = Profile::Ansi256;
         }
-    } else if term.starts_with("xterm")
-        && p < Profile::Ansi {
-            p = Profile::Ansi;
-        }
+    } else if term.starts_with("xterm") && p < Profile::Ansi {
+        p = Profile::Ansi;
+    }
 
     // Windows Terminal
     if env.get("WT_SESSION").is_some_and(|v| !v.is_empty()) {
@@ -129,10 +137,8 @@ fn env_color_profile(env: &HashMap<&str, &str>) -> Profile {
     }
 
     // ConEmu / Cmder (Windows)
-    if env.get("ConEmuANSI").is_some_and(|v| *v == "ON") {
-        if p < Profile::TrueColor {
-            p = Profile::TrueColor;
-        }
+    if env.get("ConEmuANSI").is_some_and(|v| *v == "ON") && p < Profile::TrueColor {
+        p = Profile::TrueColor;
     }
 
     // TERM_PROGRAM-based detection (iTerm2, WezTerm, mintty, etc.)
@@ -217,7 +223,11 @@ mod tests {
 
     #[test]
     fn test_dumb_truecolor_forced() {
-        let p = Profile::from_env(&env_from(&[("TERM", "dumb"), ("COLORTERM", "truecolor"), ("CLICOLOR_FORCE", "1")]));
+        let p = Profile::from_env(&env_from(&[
+            ("TERM", "dumb"),
+            ("COLORTERM", "truecolor"),
+            ("CLICOLOR_FORCE", "1"),
+        ]));
         assert_eq!(p, Profile::TrueColor);
     }
 
@@ -248,7 +258,10 @@ mod tests {
 
     #[test]
     fn test_xterm_256color_colorterm_yes() {
-        let p = Profile::from_env(&env_from(&[("TERM", "xterm-256color"), ("COLORTERM", "yes")]));
+        let p = Profile::from_env(&env_from(&[
+            ("TERM", "xterm-256color"),
+            ("COLORTERM", "yes"),
+        ]));
         assert_eq!(p, Profile::TrueColor);
     }
 
@@ -297,13 +310,20 @@ mod tests {
     #[test]
     fn test_xterm_256color_no_color_clicolor_force() {
         // NO_COLOR takes precedence over CLICOLOR_FORCE
-        let p = Profile::from_env(&env_from(&[("TERM", "xterm-256color"), ("NO_COLOR", "1"), ("CLICOLOR_FORCE", "1")]));
+        let p = Profile::from_env(&env_from(&[
+            ("TERM", "xterm-256color"),
+            ("NO_COLOR", "1"),
+            ("CLICOLOR_FORCE", "1"),
+        ]));
         assert_eq!(p, Profile::Ascii);
     }
 
     #[test]
     fn test_wt_session_with_xterm() {
-        let p = Profile::from_env(&env_from(&[("TERM", "xterm-256color"), ("WT_SESSION", "1")]));
+        let p = Profile::from_env(&env_from(&[
+            ("TERM", "xterm-256color"),
+            ("WT_SESSION", "1"),
+        ]));
         assert_eq!(p, Profile::TrueColor);
     }
 
@@ -377,7 +397,10 @@ mod tests {
 
     #[test]
     fn test_term_program_iterm() {
-        let p = Profile::from_env(&env_from(&[("TERM", "xterm-256color"), ("TERM_PROGRAM", "iTerm.app")]));
+        let p = Profile::from_env(&env_from(&[
+            ("TERM", "xterm-256color"),
+            ("TERM_PROGRAM", "iTerm.app"),
+        ]));
         assert_eq!(p, Profile::TrueColor);
     }
 

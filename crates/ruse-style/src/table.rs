@@ -132,7 +132,11 @@ impl Table {
             .collect();
 
         let row_cells: Vec<Vec<String>> = (0..self.rows.len())
-            .map(|r| (0..num_cols).map(|c| self.render_cell(r as i32, c, &col_widths)).collect())
+            .map(|r| {
+                (0..num_cols)
+                    .map(|c| self.render_cell(r as i32, c, &col_widths))
+                    .collect()
+            })
             .collect();
 
         let mut out = String::new();
@@ -151,7 +155,11 @@ impl Table {
 
         // Header row
         if !self.headers.is_empty() {
-            let header_height = header_cells.iter().map(|c| cell_height(c)).max().unwrap_or(1);
+            let header_height = header_cells
+                .iter()
+                .map(|c| cell_height(c))
+                .max()
+                .unwrap_or(1);
             for line_idx in 0..header_height {
                 out.push_str(&self.render_data_line(&header_cells, &col_widths, line_idx));
                 out.push('\n');

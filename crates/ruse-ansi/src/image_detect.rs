@@ -38,7 +38,8 @@ pub fn detect_from_env(
     }
 
     // iTerm2
-    if term_program.eq_ignore_ascii_case("iTerm.app") || term_program.eq_ignore_ascii_case("iTerm2") {
+    if term_program.eq_ignore_ascii_case("iTerm.app") || term_program.eq_ignore_ascii_case("iTerm2")
+    {
         return ImageProtocol::Iterm2;
     }
 
@@ -68,7 +69,9 @@ pub fn detect_from_env(
         })
         .unwrap_or(false)
         || term.ends_with("direct")
-        || ["alacritty", "rio", "ghostty"].iter().any(|t| term.contains(t));
+        || ["alacritty", "rio", "ghostty"]
+            .iter()
+            .any(|t| term.contains(t));
 
     if has_truecolor {
         return ImageProtocol::Mosaic;

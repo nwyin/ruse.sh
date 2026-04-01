@@ -41,8 +41,16 @@ impl Default for TextAreaKeyMap {
         Self {
             char_forward: Binding::new(&["right", "ctrl+f"], "→", "forward"),
             char_backward: Binding::new(&["left", "ctrl+b"], "←", "backward"),
-            word_forward: Binding::new(&["alt+right", "ctrl+right", "alt+f"], "alt+→", "word forward"),
-            word_backward: Binding::new(&["alt+left", "ctrl+left", "alt+b"], "alt+←", "word backward"),
+            word_forward: Binding::new(
+                &["alt+right", "ctrl+right", "alt+f"],
+                "alt+→",
+                "word forward",
+            ),
+            word_backward: Binding::new(
+                &["alt+left", "ctrl+left", "alt+b"],
+                "alt+←",
+                "word backward",
+            ),
             char_up: Binding::new(&["up"], "↑", "up"),
             char_down: Binding::new(&["down"], "↓", "down"),
             delete_char_backward: Binding::new(&["backspace"], "bksp", "delete char"),
@@ -239,11 +247,12 @@ impl TextArea {
                 for _ in 0..4 {
                     self.insert_char(' ');
                 }
-            } else if let KeyCode::Char(ch) = key.code {
-                if !key.modifiers.contains(Modifiers::CTRL) && !key.modifiers.contains(Modifiers::ALT) {
-                    self.save_undo();
-                    self.insert_char(ch);
-                }
+            } else if let KeyCode::Char(ch) = key.code
+                && !key.modifiers.contains(Modifiers::CTRL)
+                && !key.modifiers.contains(Modifiers::ALT)
+            {
+                self.save_undo();
+                self.insert_char(ch);
             }
             self.ensure_cursor_visible();
         }
@@ -337,7 +346,9 @@ impl TextArea {
     }
 
     fn insert_newline(&mut self) {
-        let rest: Vec<char> = self.lines[self.cursor_row].drain(self.cursor_col..).collect();
+        let rest: Vec<char> = self.lines[self.cursor_row]
+            .drain(self.cursor_col..)
+            .collect();
         self.cursor_row += 1;
         self.lines.insert(self.cursor_row, rest);
         self.cursor_col = 0;

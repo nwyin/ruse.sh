@@ -42,7 +42,7 @@
 mod projectile;
 mod spring;
 
-pub use projectile::{Point, Projectile, Vector, GRAVITY, TERMINAL_GRAVITY};
+pub use projectile::{GRAVITY, Point, Projectile, TERMINAL_GRAVITY, Vector};
 pub use spring::Spring;
 
 /// Convert frames-per-second to a delta time value (seconds per frame).

@@ -31,35 +31,29 @@ pub fn truncate(s: &str, width: usize, tail: &str) -> String {
             match chars.peek() {
                 Some(&'[') => {
                     out.push(chars.next().unwrap());
-                    loop {
-                        match chars.next() {
-                            Some(c) => {
-                                out.push(c);
-                                if ('@'..='~').contains(&c) {
-                                    break;
-                                }
-                            }
-                            None => break,
+                    for c in chars.by_ref() {
+                        out.push(c);
+                        if ('@'..='~').contains(&c) {
+                            break;
                         }
                     }
                 }
                 Some(&']') => {
                     out.push(chars.next().unwrap());
-                    loop {
-                        match chars.next() {
-                            Some('\x07') => {
+                    while let Some(c) = chars.next() {
+                        match c {
+                            '\x07' => {
                                 out.push('\x07');
                                 break;
                             }
-                            Some('\x1b') => {
+                            '\x1b' => {
                                 out.push('\x1b');
                                 if chars.peek() == Some(&'\\') {
                                     out.push(chars.next().unwrap());
                                 }
                                 break;
                             }
-                            Some(c) => out.push(c),
-                            None => break,
+                            _ => out.push(c),
                         }
                     }
                 }
@@ -176,35 +170,29 @@ fn parse_segments(s: &str) -> Vec<Segment> {
             match chars.peek() {
                 Some(&'[') => {
                     seq.push(chars.next().unwrap());
-                    loop {
-                        match chars.next() {
-                            Some(c) => {
-                                seq.push(c);
-                                if ('@'..='~').contains(&c) {
-                                    break;
-                                }
-                            }
-                            None => break,
+                    for c in chars.by_ref() {
+                        seq.push(c);
+                        if ('@'..='~').contains(&c) {
+                            break;
                         }
                     }
                 }
                 Some(&']') => {
                     seq.push(chars.next().unwrap());
-                    loop {
-                        match chars.next() {
-                            Some('\x07') => {
+                    while let Some(c) = chars.next() {
+                        match c {
+                            '\x07' => {
                                 seq.push('\x07');
                                 break;
                             }
-                            Some('\x1b') => {
+                            '\x1b' => {
                                 seq.push('\x1b');
                                 if chars.peek() == Some(&'\\') {
                                     seq.push(chars.next().unwrap());
                                 }
                                 break;
                             }
-                            Some(c) => seq.push(c),
-                            None => break,
+                            _ => seq.push(c),
                         }
                     }
                 }

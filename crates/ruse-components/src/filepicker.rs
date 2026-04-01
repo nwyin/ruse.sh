@@ -61,7 +61,11 @@ impl Default for FilePickerStyles {
             cursor: Style::new().reverse(true),
             directory: Style::new().bold(true),
             file: Style::new(),
-            selected: Style::new().foreground(ruse_style::Color::Rgb { r: 100, g: 200, b: 100 }),
+            selected: Style::new().foreground(ruse_style::Color::Rgb {
+                r: 100,
+                g: 200,
+                b: 100,
+            }),
             symlink: Style::new().italic(true),
         }
     }
@@ -306,7 +310,9 @@ impl FilePicker {
             return true;
         }
         let name_lower = name.to_lowercase();
-        self.allowed_types.iter().any(|ext| name_lower.ends_with(ext))
+        self.allowed_types
+            .iter()
+            .any(|ext| name_lower.ends_with(ext))
     }
 
     fn ensure_cursor_visible(&mut self) {

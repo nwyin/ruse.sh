@@ -1,5 +1,4 @@
 /// Tree/list rendering with configurable enumerators.
-
 /// A tree node: a value string with optional children.
 pub struct Tree {
     pub value: String,
@@ -189,7 +188,8 @@ root
 
     #[test]
     fn test_bullet_enumerator() {
-        let tree = Tree::new("list").with_children(vec![Tree::new("x"), Tree::new("y"), Tree::new("z")]);
+        let tree =
+            Tree::new("list").with_children(vec![Tree::new("x"), Tree::new("y"), Tree::new("z")]);
         let result = tree.render(&Enumerator::Bullet);
         let expected = "\
 list
@@ -201,7 +201,11 @@ list
 
     #[test]
     fn test_arabic_enumerator() {
-        let tree = Tree::new("items").with_children(vec![Tree::new("first"), Tree::new("second"), Tree::new("third")]);
+        let tree = Tree::new("items").with_children(vec![
+            Tree::new("first"),
+            Tree::new("second"),
+            Tree::new("third"),
+        ]);
         let result = tree.render(&Enumerator::Arabic);
         let expected = "\
 items
@@ -271,7 +275,9 @@ root
     #[test]
     fn test_custom_enumerator() {
         let tree = Tree::new("root").with_children(vec![Tree::new("a"), Tree::new("b")]);
-        let result = tree.render(&Enumerator::Custom(Box::new(|i, _last| format!("[{}] ", i))));
+        let result = tree.render(&Enumerator::Custom(Box::new(|i, _last| {
+            format!("[{}] ", i)
+        })));
         let expected = "\
 root
 [0] a
@@ -287,7 +293,9 @@ root
 
     #[test]
     fn test_nested_arabic() {
-        let tree = Tree::new("root").with_children(vec![Tree::new("a").with_children(vec![Tree::new("a1"), Tree::new("a2")])]);
+        let tree = Tree::new("root").with_children(vec![
+            Tree::new("a").with_children(vec![Tree::new("a1"), Tree::new("a2")]),
+        ]);
         let result = tree.render(&Enumerator::Arabic);
         let expected = "\
 root

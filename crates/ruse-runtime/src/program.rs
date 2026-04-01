@@ -4,15 +4,10 @@ use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use crossterm::{
-    cursor, event,
-    event::EventStream,
-    execute, queue,
-    terminal,
-};
+use crossterm::{cursor, event, event::EventStream, execute, queue, terminal};
 use futures::StreamExt;
 use ruse_ansi::cellbuf;
-use tokio::sync::{mpsc, Notify};
+use tokio::sync::{Notify, mpsc};
 use tokio_util::sync::CancellationToken;
 
 use crate::cmd::{CmdInner, ExecRequest, RawSequence};
@@ -180,13 +175,20 @@ impl<M: Model> Program<M> {
     pub async fn run(self) -> Result<M, ProgramError> {
         let (msg_tx, msg_rx) = mpsc::unbounded_channel::<Msg>();
         let cancel = CancellationToken::new();
-        self.run_with_panic_recovery(msg_tx, msg_rx, cancel, None).await
+        self.run_with_panic_recovery(msg_tx, msg_rx, cancel, None)
+            .await
     }
 
     /// Run the program, returning a handle for external message injection.
     /// The handle can send messages into the program's event loop from any thread.
     /// The returned future must be awaited to actually run the program.
-    pub fn run_with_handle(self) -> (ProgramHandle, Pin<Box<dyn Future<Output = Result<M, ProgramError>> + Send>>) {
+    #[allow(clippy::type_complexity)]
+    pub fn run_with_handle(
+        self,
+    ) -> (
+        ProgramHandle,
+        Pin<Box<dyn Future<Output = Result<M, ProgramError>> + Send>>,
+    ) {
         let (msg_tx, msg_rx) = mpsc::unbounded_channel::<Msg>();
         let cancel = CancellationToken::new();
         let finished = Arc::new(Notify::new());
@@ -198,7 +200,9 @@ impl<M: Model> Program<M> {
         };
 
         let fut = Box::pin(async move {
-            let result = self.run_with_panic_recovery(msg_tx, msg_rx, cancel, Some(finished.clone())).await;
+            let result = self
+                .run_with_panic_recovery(msg_tx, msg_rx, cancel, Some(finished.clone()))
+                .await;
             finished.notify_waiters();
             result
         });
@@ -214,9 +218,7 @@ impl<M: Model> Program<M> {
         cancel: CancellationToken,
         _finished: Option<Arc<Notify>>,
     ) -> Result<M, ProgramError> {
-        match tokio::task::spawn(AssertUnwindSafe(
-            self.run_inner(msg_tx, msg_rx, cancel)
-        )).await {
+        match tokio::task::spawn(AssertUnwindSafe(self.run_inner(msg_tx, msg_rx, cancel))).await {
             Ok(result) => result,
             Err(join_err) => {
                 restore_terminal_emergency();
@@ -438,8 +440,9 @@ impl<M: Model> Program<M> {
         let mut sequence_queue: Vec<CmdInner> = Vec::new();
 
         // Render ticker for flushing
-        let mut flush_interval =
-            tokio::time::interval(std::time::Duration::from_micros(1_000_000 / self.fps as u64));
+        let mut flush_interval = tokio::time::interval(std::time::Duration::from_micros(
+            1_000_000 / self.fps as u64,
+        ));
 
         let mut result: Result<(), ProgramError> = Ok(());
 

@@ -76,11 +76,7 @@ impl Stopwatch {
     pub fn reset(&mut self) -> Cmd {
         self.elapsed = Duration::ZERO;
         self.tag += 1;
-        if self.running {
-            self.tick_cmd()
-        } else {
-            None
-        }
+        if self.running { self.tick_cmd() } else { None }
     }
 
     pub fn update(&mut self, msg: &Msg) -> Cmd {
