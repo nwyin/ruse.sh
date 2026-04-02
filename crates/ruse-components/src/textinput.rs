@@ -138,6 +138,11 @@ impl TextInput {
         self
     }
 
+    pub fn set_width(&mut self, w: usize) {
+        self.width = w;
+        self.handle_overflow();
+    }
+
     pub fn set_suggestions(&mut self, suggestions: Vec<String>) {
         self.suggestions = suggestions;
         self.update_suggestions();
