@@ -110,7 +110,6 @@ pub struct Program<M: Model> {
     bracketed_paste: bool,
     kitty_keyboard: bool,
     disable_renderer: bool,
-    #[allow(dead_code)]
     disable_signals: bool,
     filter: Option<MessageFilter<M>>,
     external_cancel: Option<CancellationToken>,
@@ -464,10 +463,10 @@ impl<M: Model> Program<M> {
 
         // Spawn SIGWINCH handler (Unix only)
         #[cfg(unix)]
-        let sigwinch_handle = {
+        let sigwinch_handle = if !self.disable_signals {
             let sig_cancel = cancel.clone();
             let sig_msg_tx = msg_tx.clone();
-            tokio::spawn(async move {
+            Some(tokio::spawn(async move {
                 use tokio::signal::unix::{SignalKind, signal};
                 let mut stream = match signal(SignalKind::window_change()) {
                     Ok(s) => s,
@@ -483,7 +482,9 @@ impl<M: Model> Program<M> {
                         }
                     }
                 }
-            })
+            }))
+        } else {
+            None
         };
 
         // Drop the internal sender — channel stays open if ProgramHandle holds a clone
@@ -737,7 +738,9 @@ impl<M: Model> Program<M> {
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), cmd_handle).await;
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), render_handle).await;
         #[cfg(unix)]
-        let _ = tokio::time::timeout(std::time::Duration::from_millis(100), sigwinch_handle).await;
+        if let Some(handle) = sigwinch_handle {
+            let _ = tokio::time::timeout(std::time::Duration::from_millis(100), handle).await;
+        }
 
         result?;
         Ok(self.model)
