@@ -372,32 +372,26 @@ impl List {
 
     fn update_filtering(&mut self, msg: &Msg) -> Cmd {
         if let Msg::KeyPress(key) = msg {
-            match key.code {
+            let done = match key.code {
                 KeyCode::Enter => {
                     // Accept filter
                     self.filter_text = self.filter_input.value();
-                    self.filtering = false;
-                    self.filter_state = if self.filter_text.is_empty() {
-                        FilterState::Unfiltered
-                    } else {
-                        FilterState::FilterApplied
-                    };
-                    self.filter_input.blur();
                     self.apply_filter();
-                    return None;
+                    true
                 }
-                KeyCode::Escape => {
-                    // Cancel filter
-                    self.filtering = false;
-                    self.filter_state = if self.filter_text.is_empty() {
-                        FilterState::Unfiltered
-                    } else {
-                        FilterState::FilterApplied
-                    };
-                    self.filter_input.blur();
-                    return None;
-                }
-                _ => {}
+                KeyCode::Escape => true,
+                _ => false,
+            };
+
+            if done {
+                self.filtering = false;
+                self.filter_state = if self.filter_text.is_empty() {
+                    FilterState::Unfiltered
+                } else {
+                    FilterState::FilterApplied
+                };
+                self.filter_input.blur();
+                return None;
             }
         }
 

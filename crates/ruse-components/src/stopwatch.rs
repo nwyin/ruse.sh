@@ -94,15 +94,7 @@ impl Stopwatch {
     }
 
     pub fn view(&self) -> String {
-        let secs = self.elapsed.as_secs();
-        let hours = secs / 3600;
-        let mins = (secs % 3600) / 60;
-        let s = secs % 60;
-        if hours > 0 {
-            format!("{hours:02}:{mins:02}:{s:02}")
-        } else {
-            format!("{mins:02}:{s:02}")
-        }
+        crate::util::format_duration(self.elapsed)
     }
 
     fn tick_cmd(&self) -> Cmd {

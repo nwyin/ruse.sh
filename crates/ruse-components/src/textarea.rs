@@ -260,8 +260,8 @@ impl TextArea {
     }
 
     pub fn view(&self) -> String {
+        let digits = format!("{}", self.lines.len()).len();
         let gutter_width = if self.show_line_numbers {
-            let digits = format!("{}", self.lines.len()).len();
             digits + 2 // number + space + separator
         } else {
             0
@@ -278,7 +278,6 @@ impl TextArea {
 
             // Line number gutter
             if self.show_line_numbers {
-                let digits = format!("{}", self.lines.len()).len();
                 let num_str = format!("{:>width$} ", row + 1, width = digits);
                 out.push_str(&self.line_number_style.render(&[&num_str]));
             }
@@ -328,7 +327,6 @@ impl TextArea {
         for _ in (end - self.y_offset)..self.height {
             out.push('\n');
             if self.show_line_numbers {
-                let digits = format!("{}", self.lines.len()).len();
                 let pad = " ".repeat(digits + 2);
                 out.push_str(&self.line_number_style.render(&[&pad]));
             }

@@ -12,6 +12,7 @@ pub mod table;
 pub mod textarea;
 pub mod textinput;
 pub mod timer;
+mod util;
 pub mod viewport;
 
 // Re-export primary types

@@ -101,15 +101,7 @@ impl Timer {
 
     pub fn view(&self) -> String {
         let remaining = self.timeout.saturating_sub(self.elapsed);
-        let secs = remaining.as_secs();
-        let hours = secs / 3600;
-        let mins = (secs % 3600) / 60;
-        let s = secs % 60;
-        if hours > 0 {
-            format!("{hours:02}:{mins:02}:{s:02}")
-        } else {
-            format!("{mins:02}:{s:02}")
-        }
+        crate::util::format_duration(remaining)
     }
 
     fn tick_cmd(&self) -> Cmd {
