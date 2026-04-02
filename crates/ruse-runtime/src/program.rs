@@ -210,7 +210,7 @@ impl<M: Model> Program<M> {
     pub async fn run(self) -> Result<M, ProgramError> {
         let (msg_tx, msg_rx) = mpsc::unbounded_channel::<Msg>();
         let cancel = CancellationToken::new();
-        self.run_with_panic_recovery(msg_tx, msg_rx, cancel, None)
+        self.run_with_panic_recovery(msg_tx, msg_rx, cancel)
             .await
     }
 
@@ -236,7 +236,7 @@ impl<M: Model> Program<M> {
 
         let fut = Box::pin(async move {
             let result = self
-                .run_with_panic_recovery(msg_tx, msg_rx, cancel, Some(finished.clone()))
+                .run_with_panic_recovery(msg_tx, msg_rx, cancel)
                 .await;
             finished.notify_waiters();
             result
@@ -251,7 +251,6 @@ impl<M: Model> Program<M> {
         msg_tx: mpsc::UnboundedSender<Msg>,
         msg_rx: mpsc::UnboundedReceiver<Msg>,
         cancel: CancellationToken,
-        _finished: Option<Arc<Notify>>,
     ) -> Result<M, ProgramError> {
         match tokio::task::spawn(AssertUnwindSafe(self.run_inner(msg_tx, msg_rx, cancel))).await {
             Ok(result) => result,

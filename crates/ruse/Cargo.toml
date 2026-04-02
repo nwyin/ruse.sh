@@ -41,3 +41,11 @@ path = "examples/spinner.rs"
 [[example]]
 name = "composite"
 path = "examples/composite.rs"
+
+[[example]]
+name = "particle"
+path = "examples/particle.rs"
+
+[[example]]
+name = "spring"
+path = "examples/spring.rs"

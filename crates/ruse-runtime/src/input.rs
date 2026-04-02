@@ -8,7 +8,7 @@ use crate::mouse::{MouseButton, MouseEvent};
 use crate::msg::Msg;
 
 /// Translate a crossterm `Event` into our `Msg` type.
-pub fn translate_event(event: Event) -> Option<Msg> {
+pub(crate) fn translate_event(event: Event) -> Option<Msg> {
     match event {
         Event::Key(key_event) => translate_key(key_event),
         Event::Mouse(mouse_event) => translate_mouse(mouse_event),

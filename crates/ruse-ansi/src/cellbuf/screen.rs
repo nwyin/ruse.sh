@@ -41,14 +41,6 @@ struct Cursor {
     link: Link,
 }
 
-/// Data about a touched (changed) line.
-#[derive(Debug)]
-#[allow(dead_code)]
-struct LineData {
-    first_cell: usize,
-    last_cell: usize,
-}
-
 /// Double-buffered screen renderer with diff-based output.
 ///
 /// Maintains two buffers (current and new) and computes the minimal
@@ -67,8 +59,6 @@ pub struct Screen {
     width: u16,
     /// Height of the terminal.
     height: u16,
-    /// Lines that have been modified.
-    touch: HashMap<usize, LineData>,
     /// Hash values for current buffer lines.
     oldhash: Vec<u64>,
     /// Hash values for new buffer lines.
@@ -106,7 +96,6 @@ impl Screen {
             cur: Cursor::default(),
             width,
             height,
-            touch: HashMap::new(),
             oldhash: vec![0; h],
             newhash: vec![0; h],
             oldnum: vec![-1; h],
@@ -216,8 +205,6 @@ impl Screen {
         // Swap: new becomes current
         std::mem::swap(&mut self.curbuf, &mut self.newbuf);
         self.newbuf.clear();
-        self.touch.clear();
-
         Ok(())
     }
 
@@ -343,7 +330,7 @@ impl Screen {
 
                     if count >= 2 {
                         // Worth scrolling
-                        self.emit_scroll_up(y, count, shift as usize);
+                        self.emit_scroll_up(shift as usize);
                         // Update current buffer state
                         self.curbuf.delete_line(y, shift as usize);
                         y += count;
@@ -372,7 +359,7 @@ impl Screen {
 
                     if count >= 2 {
                         let n = (-shift) as usize;
-                        self.emit_scroll_down(start, count, n);
+                        self.emit_scroll_down(n);
                         self.curbuf.insert_line(start, n);
                         y = start;
                         continue;
@@ -617,7 +604,7 @@ impl Screen {
     }
 
     /// Emit scroll up command.
-    fn emit_scroll_up(&mut self, _y: usize, _count: usize, n: usize) {
+    fn emit_scroll_up(&mut self, n: usize) {
         // Use CSI S (scroll up)
         if n == 1 {
             self.out.extend_from_slice(b"\x1b[S");
@@ -627,7 +614,7 @@ impl Screen {
     }
 
     /// Emit scroll down command.
-    fn emit_scroll_down(&mut self, _y: usize, _count: usize, n: usize) {
+    fn emit_scroll_down(&mut self, n: usize) {
         // Use CSI T (scroll down)
         if n == 1 {
             self.out.extend_from_slice(b"\x1b[T");
