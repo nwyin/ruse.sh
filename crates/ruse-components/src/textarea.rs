@@ -81,7 +81,6 @@ pub struct TextArea {
     y_offset: usize,
     focus: bool,
     pub show_line_numbers: bool,
-    #[allow(dead_code)]
     style: Style,
     pub line_number_style: Style,
     pub cursor_line_style: Style,
@@ -122,6 +121,11 @@ impl TextArea {
     pub fn set_height(&mut self, h: usize) {
         self.height = h;
         self.ensure_cursor_visible();
+    }
+
+    pub fn with_style(mut self, s: Style) -> Self {
+        self.style = s;
+        self
     }
 
     pub fn value(&self) -> String {
@@ -299,7 +303,7 @@ impl TextArea {
                         let cursor_style = Style::new().reverse(true);
                         line_out.push_str(&cursor_style.render(&[&ch.to_string()]));
                     } else {
-                        line_out.push(*ch);
+                        line_out.push_str(&self.style.render(&[&ch.to_string()]));
                     }
                 }
                 if self.cursor_col >= chars.len() {
@@ -310,15 +314,15 @@ impl TextArea {
                 // Pad to content width
                 let visible_width = ruse_ansi::string_width(&line_out);
                 if content_width > visible_width {
-                    line_out.push_str(&" ".repeat(content_width - visible_width));
+                    line_out.push_str(&self.style.render(&[&" ".repeat(content_width - visible_width)]));
                 }
                 out.push_str(&line_out);
             } else {
-                out.push_str(&display);
+                out.push_str(&self.style.render(&[&display]));
                 // Pad to content width
                 let visible_width = ruse_ansi::string_width(&display);
                 if content_width > visible_width {
-                    out.push_str(&" ".repeat(content_width - visible_width));
+                    out.push_str(&self.style.render(&[&" ".repeat(content_width - visible_width)]));
                 }
             }
         }
@@ -331,7 +335,7 @@ impl TextArea {
                 out.push_str(&self.line_number_style.render(&[&pad]));
             }
             if content_width > 0 {
-                out.push_str(&" ".repeat(content_width));
+                out.push_str(&self.style.render(&[&" ".repeat(content_width)]));
             }
         }
 
