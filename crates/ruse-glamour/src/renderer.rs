@@ -951,7 +951,9 @@ fn replace_emoji_shortcodes(input: &str) -> String {
                                     break;
                                 }
                             } else {
-                                result.push(input[j..].chars().next().unwrap());
+                                result.push(
+                                    input[j..].chars().next().expect("j is within input bounds"),
+                                );
                             }
                         }
                     }

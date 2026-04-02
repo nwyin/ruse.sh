@@ -507,7 +507,7 @@ impl<M: Model> Program<M> {
                             // Handle custom internal messages (exec, raw)
                             let msg = match msg {
                                 Msg::Custom(any) if any.is::<ExecRequest>() => {
-                                    let exec_req = *any.downcast::<ExecRequest>().unwrap();
+                                    let exec_req = *any.downcast::<ExecRequest>().expect("type checked in match guard");
                                     // Release terminal
                                     let _ = terminal::disable_raw_mode();
                                     if current_alt_screen {
@@ -547,7 +547,7 @@ impl<M: Model> Program<M> {
                                     continue;
                                 }
                                 Msg::Custom(any) if any.is::<RawSequence>() => {
-                                    let raw_seq = *any.downcast::<RawSequence>().unwrap();
+                                    let raw_seq = *any.downcast::<RawSequence>().expect("type checked in match guard");
                                     let _ = stdout.write_all(raw_seq.0.as_bytes());
                                     let _ = stdout.flush();
                                     continue;

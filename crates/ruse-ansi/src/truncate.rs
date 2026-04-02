@@ -30,7 +30,7 @@ pub fn truncate(s: &str, width: usize, tail: &str) -> String {
             out.push(ch);
             match chars.peek() {
                 Some(&'[') => {
-                    out.push(chars.next().unwrap());
+                    out.push(chars.next().expect("consumed peeked char"));
                     for c in chars.by_ref() {
                         out.push(c);
                         if ('@'..='~').contains(&c) {
@@ -39,7 +39,7 @@ pub fn truncate(s: &str, width: usize, tail: &str) -> String {
                     }
                 }
                 Some(&']') => {
-                    out.push(chars.next().unwrap());
+                    out.push(chars.next().expect("consumed peeked char"));
                     while let Some(c) = chars.next() {
                         match c {
                             '\x07' => {
@@ -49,7 +49,7 @@ pub fn truncate(s: &str, width: usize, tail: &str) -> String {
                             '\x1b' => {
                                 out.push('\x1b');
                                 if chars.peek() == Some(&'\\') {
-                                    out.push(chars.next().unwrap());
+                                    out.push(chars.next().expect("consumed peeked char"));
                                 }
                                 break;
                             }
@@ -169,7 +169,7 @@ fn parse_segments(s: &str) -> Vec<Segment> {
             seq.push(ch);
             match chars.peek() {
                 Some(&'[') => {
-                    seq.push(chars.next().unwrap());
+                    seq.push(chars.next().expect("consumed peeked char"));
                     for c in chars.by_ref() {
                         seq.push(c);
                         if ('@'..='~').contains(&c) {
@@ -178,7 +178,7 @@ fn parse_segments(s: &str) -> Vec<Segment> {
                     }
                 }
                 Some(&']') => {
-                    seq.push(chars.next().unwrap());
+                    seq.push(chars.next().expect("consumed peeked char"));
                     while let Some(c) = chars.next() {
                         match c {
                             '\x07' => {
@@ -188,7 +188,7 @@ fn parse_segments(s: &str) -> Vec<Segment> {
                             '\x1b' => {
                                 seq.push('\x1b');
                                 if chars.peek() == Some(&'\\') {
-                                    seq.push(chars.next().unwrap());
+                                    seq.push(chars.next().expect("consumed peeked char"));
                                 }
                                 break;
                             }

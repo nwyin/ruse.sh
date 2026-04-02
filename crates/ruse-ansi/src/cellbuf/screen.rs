@@ -870,9 +870,8 @@ fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
             27 => style.attrs.unset(super::style::AttrMask::REVERSE),
             28 => style.attrs.unset(super::style::AttrMask::CONCEAL),
             29 => style.attrs.unset(super::style::AttrMask::STRIKETHROUGH),
-            30..=37 => {
-                let idx = p.parse::<u32>().unwrap() - 30;
-                style.fg = Some(ansi_basic_color(idx as u8));
+            n @ 30..=37 => {
+                style.fg = Some(ansi_basic_color((n - 30) as u8));
             }
             38 => {
                 if let Some(color) = parse_extended_color(&mut parts) {
@@ -880,9 +879,8 @@ fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
                 }
             }
             39 => style.fg = None,
-            40..=47 => {
-                let idx = p.parse::<u32>().unwrap() - 40;
-                style.bg = Some(ansi_basic_color(idx as u8));
+            n @ 40..=47 => {
+                style.bg = Some(ansi_basic_color((n - 40) as u8));
             }
             48 => {
                 if let Some(color) = parse_extended_color(&mut parts) {
@@ -896,21 +894,11 @@ fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
                 }
             }
             59 => style.ul = None,
-            90..=97 => {
-                let idx = p
-                    .parse::<u32>()
-                    .expect("SGR parameter already validated as u32")
-                    - 90
-                    + 8;
-                style.fg = Some(ansi_basic_color(idx as u8));
+            n @ 90..=97 => {
+                style.fg = Some(ansi_basic_color((n - 90 + 8) as u8));
             }
-            100..=107 => {
-                let idx = p
-                    .parse::<u32>()
-                    .expect("SGR parameter already validated as u32")
-                    - 100
-                    + 8;
-                style.bg = Some(ansi_basic_color(idx as u8));
+            n @ 100..=107 => {
+                style.bg = Some(ansi_basic_color((n - 100 + 8) as u8));
             }
             _ => {}
         }

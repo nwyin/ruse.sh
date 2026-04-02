@@ -133,7 +133,7 @@ fn key_string_matches(key: &KeyEvent, s: &str) -> bool {
             }
         }
         s if s.len() == 1 => {
-            let ch = s.chars().next().unwrap();
+            let ch = s.chars().next().expect("length checked above");
             key.code == KeyCode::Char(ch)
         }
         _ => false,

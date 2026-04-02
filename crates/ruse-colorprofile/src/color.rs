@@ -335,9 +335,9 @@ impl Color {
             match hex.len() {
                 3 => {
                     let mut chars = hex.chars();
-                    let r = parse_hex_char(chars.next().unwrap());
-                    let g = parse_hex_char(chars.next().unwrap());
-                    let b = parse_hex_char(chars.next().unwrap());
+                    let r = parse_hex_char(chars.next().expect("hex length is 3"));
+                    let g = parse_hex_char(chars.next().expect("hex length is 3"));
+                    let b = parse_hex_char(chars.next().expect("hex length is 3"));
                     Color::Rgb {
                         r: r << 4 | r,
                         g: g << 4 | g,

@@ -221,7 +221,7 @@ fn consume_escape(chars: &mut std::iter::Peekable<std::str::Chars<'_>>, esc: cha
 
     match chars.peek() {
         Some(&'[') => {
-            seq.push(chars.next().unwrap());
+            seq.push(chars.next().expect("consumed peeked char"));
             for c in chars.by_ref() {
                 seq.push(c);
                 if ('@'..='~').contains(&c) {
@@ -230,7 +230,7 @@ fn consume_escape(chars: &mut std::iter::Peekable<std::str::Chars<'_>>, esc: cha
             }
         }
         Some(&']') => {
-            seq.push(chars.next().unwrap());
+            seq.push(chars.next().expect("consumed peeked char"));
             while let Some(c) = chars.next() {
                 match c {
                     '\x07' => {
@@ -240,7 +240,7 @@ fn consume_escape(chars: &mut std::iter::Peekable<std::str::Chars<'_>>, esc: cha
                     '\x1b' => {
                         seq.push('\x1b');
                         if chars.peek() == Some(&'\\') {
-                            seq.push(chars.next().unwrap());
+                            seq.push(chars.next().expect("consumed peeked char"));
                         }
                         break;
                     }

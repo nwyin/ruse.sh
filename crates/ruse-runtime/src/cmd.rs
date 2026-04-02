@@ -28,7 +28,7 @@ pub fn batch(cmds: Vec<Cmd>) -> Cmd {
     let valid: Vec<CmdInner> = cmds.into_iter().flatten().collect();
     match valid.len() {
         0 => None,
-        1 => Some(valid.into_iter().next().unwrap()),
+        1 => Some(valid.into_iter().next().expect("length checked above")),
         _ => Some(CmdInner::Sync(Box::new(|| {
             Msg::Batch(valid.into_iter().map(Some).collect())
         }))),
@@ -40,7 +40,7 @@ pub fn sequence(cmds: Vec<Cmd>) -> Cmd {
     let valid: Vec<CmdInner> = cmds.into_iter().flatten().collect();
     match valid.len() {
         0 => None,
-        1 => Some(valid.into_iter().next().unwrap()),
+        1 => Some(valid.into_iter().next().expect("length checked above")),
         _ => Some(CmdInner::Sync(Box::new(|| {
             Msg::Sequence(valid.into_iter().map(Some).collect())
         }))),
