@@ -707,6 +707,14 @@ fn pad_each_line_right(s: &str, pad: &str) -> String {
     out
 }
 
+fn styled_spaces(n: usize, style: Option<&SgrStyle>) -> String {
+    let spaces = " ".repeat(n);
+    match style {
+        Some(st) => st.styled(&spaces),
+        None => spaces,
+    }
+}
+
 fn align_text_horizontal(
     str: &str,
     pos: Position,
@@ -724,38 +732,14 @@ fn align_text_horizontal(
 
         if short_amount > 0 {
             if pos == Position::RIGHT {
-                let sp = " ".repeat(short_amount);
-                let sp = if let Some(st) = style {
-                    st.styled(&sp)
-                } else {
-                    sp
-                };
-                l = sp + &l;
+                l = styled_spaces(short_amount, style) + &l;
             } else if pos == Position::CENTER {
                 let left = short_amount / 2;
                 let right = left + short_amount % 2;
-                let left_sp = " ".repeat(left);
-                let right_sp = " ".repeat(right);
-                let left_sp = if let Some(st) = style {
-                    st.styled(&left_sp)
-                } else {
-                    left_sp
-                };
-                let right_sp = if let Some(st) = style {
-                    st.styled(&right_sp)
-                } else {
-                    right_sp
-                };
-                l = left_sp + &l + &right_sp;
+                l = styled_spaces(left, style) + &l + &styled_spaces(right, style);
             } else {
                 // Left alignment (default)
-                let sp = " ".repeat(short_amount);
-                let sp = if let Some(st) = style {
-                    st.styled(&sp)
-                } else {
-                    sp
-                };
-                l = l + &sp;
+                l = l + &styled_spaces(short_amount, style);
             }
         }
 
