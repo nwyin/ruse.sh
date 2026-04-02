@@ -68,7 +68,6 @@ pub struct TextInput {
     char_limit: usize,
     style: Style,
     placeholder_style: Style,
-    #[allow(dead_code)]
     cursor_style: Style,
     suggestions: Vec<String>,
     matched_suggestions: Vec<String>,
@@ -103,7 +102,7 @@ impl TextInput {
             char_limit: 0, // 0 means no limit
             style: Style::new(),
             placeholder_style: Style::new().faint(true),
-            cursor_style: Style::new(),
+            cursor_style: Style::new().reverse(true),
             suggestions: Vec::new(),
             matched_suggestions: Vec::new(),
             current_suggestion_idx: 0,
@@ -125,6 +124,11 @@ impl TextInput {
 
     pub fn with_echo_mode(mut self, mode: EchoMode) -> Self {
         self.echo_mode = mode;
+        self
+    }
+
+    pub fn with_cursor_style(mut self, s: Style) -> Self {
+        self.cursor_style = s;
         self
     }
 
@@ -289,11 +293,9 @@ impl TextInput {
         // Render characters with cursor
         let cursor_visible_pos = self.pos.saturating_sub(self.offset);
 
-        let cursor_style = Style::new().reverse(true);
-
         for (i, ch) in visible.iter().enumerate() {
             if i == cursor_visible_pos && self.focus {
-                out.push_str(&cursor_style.render(&[&ch.to_string()]));
+                out.push_str(&self.cursor_style.render(&[&ch.to_string()]));
             } else {
                 out.push_str(&self.style.render(&[&ch.to_string()]));
             }
@@ -301,7 +303,7 @@ impl TextInput {
 
         // If cursor is at the end, show the cursor as a space
         if cursor_visible_pos >= visible.len() && self.focus {
-            out.push_str(&cursor_style.render(&[" "]));
+            out.push_str(&self.cursor_style.render(&[" "]));
         }
 
         out
