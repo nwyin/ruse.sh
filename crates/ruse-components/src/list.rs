@@ -125,7 +125,6 @@ pub struct List {
     filter_state: FilterState,
     spinner: Spinner,
     pub show_spinner: bool,
-    #[allow(dead_code)]
     paginator: Paginator,
     pub show_paginator: bool,
 }
@@ -185,6 +184,7 @@ impl List {
         if self.cursor >= self.filtered_indices.len() && !self.filtered_indices.is_empty() {
             self.cursor = self.filtered_indices.len() - 1;
         }
+        self.sync_paginator();
     }
 
     pub fn set_filter_text(&mut self, text: &str) {
@@ -269,6 +269,7 @@ impl List {
                 return self.filter_input.focus();
             }
         }
+        self.sync_paginator();
         None
     }
 
@@ -358,9 +359,7 @@ impl List {
                     && self.filtered_indices.len() > item_height
                     && item_height > 0
                 {
-                    let total_pages = self.filtered_indices.len().div_ceil(item_height);
-                    let current_page = self.y_offset / item_height;
-                    s.push_str(&format!("  {}/{total_pages}", current_page + 1));
+                    s.push_str(&format!("  {}", self.paginator.view()));
                 }
                 s
             };
@@ -420,6 +419,7 @@ impl List {
             self.cursor = self.filtered_indices.len().saturating_sub(1);
         }
         self.ensure_cursor_visible();
+        self.sync_paginator();
     }
 
     fn cursor_up(&mut self) {
@@ -459,6 +459,15 @@ impl List {
             self.y_offset = self.cursor;
         } else if self.cursor >= self.y_offset + visible {
             self.y_offset = self.cursor - visible + 1;
+        }
+    }
+
+    fn sync_paginator(&mut self) {
+        let item_height = self.visible_item_count();
+        if item_height > 0 {
+            self.paginator.per_page = item_height;
+            self.paginator.set_total_pages(self.filtered_indices.len());
+            self.paginator.page = self.y_offset / item_height;
         }
     }
 }
