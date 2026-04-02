@@ -118,13 +118,11 @@ impl Scene {
         let mut cmds = Vec::new();
 
         // Blur the currently focused pane
-        if let Some(ref old_id) = self.focus
-            && *old_id != id
+        if let Some(old_id) = self.focus.clone()
+            && old_id != id
+            && let Some(entry) = self.panes.iter_mut().find(|e| e.id == old_id)
         {
-            let old_id_clone = old_id.clone();
-            if let Some(entry) = self.panes.iter_mut().find(|e| e.id == old_id_clone) {
-                entry.pane.blur();
-            }
+            entry.pane.blur();
         }
 
         // Focus the new pane
@@ -249,8 +247,8 @@ impl Scene {
     // --- internal helpers ---
 
     fn route_to_focused(&mut self, msg: &Msg) -> Cmd {
-        if let Some(ref focus_id) = self.focus.clone() {
-            self.route_to_pane(focus_id, msg)
+        if let Some(focus_id) = self.focus.clone() {
+            self.route_to_pane(&focus_id, msg)
         } else {
             None
         }

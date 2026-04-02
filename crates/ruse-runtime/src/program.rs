@@ -1,4 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
 use std::future::Future;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::panic::AssertUnwindSafe;
 use std::pin::Pin;
@@ -353,7 +355,7 @@ impl<M: Model> Program<M> {
         // Set up the cell-buffer based screen renderer
         let (term_w, term_h) = terminal::size().unwrap_or((80, 24));
         let mut screen = cellbuf::Screen::new(term_w, term_h);
-        let mut last_view_content: Option<String> = None;
+        let mut last_view_hash: Option<u64> = None;
         let mut render_dirty = false;
 
         // Combine external cancel token if provided
@@ -394,7 +396,7 @@ impl<M: Model> Program<M> {
             render_view(&mut screen, &view);
             screen.render(&mut stdout)?;
             render_cursor(&mut stdout, &view)?;
-            last_view_content = Some(view.content);
+            last_view_hash = Some(hash_string(&view.content));
         }
 
         // Spawn input reader task
@@ -651,7 +653,7 @@ impl<M: Model> Program<M> {
                                         render_view(&mut screen, &view);
                                         screen.render(&mut stdout)?;
                                         render_cursor(&mut stdout, &view)?;
-                                        last_view_content = Some(view.content);
+                                        last_view_hash = Some(hash_string(&view.content));
                                         render_dirty = false;
                                     }
                                 }
@@ -677,16 +679,17 @@ impl<M: Model> Program<M> {
                                         )?;
 
                                         let uses_regions = !view.regions.is_empty();
+                                        let view_hash = hash_string(&view.content);
                                         let content_changed = if uses_regions {
                                             // Always re-draw when using regions (diff engine deduplicates)
                                             true
                                         } else {
-                                            last_view_content.as_ref() != Some(&view.content)
+                                            last_view_hash != Some(view_hash)
                                         };
                                         if content_changed {
                                             render_view(&mut screen, &view);
                                             render_dirty = true;
-                                            last_view_content = Some(view.content.clone());
+                                            last_view_hash = Some(view_hash);
                                         }
 
                                         if render_dirty {
@@ -740,6 +743,13 @@ impl<M: Model> Program<M> {
         result?;
         Ok(self.model)
     }
+}
+
+/// Hash a string for cheap change detection (avoids cloning full content).
+fn hash_string(s: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    s.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// Execute a single command.
