@@ -9,6 +9,7 @@ members = [
     "crates/ruse-components",
     "crates/ruse-glamour",
     "crates/ruse",
+    "crates/ruse-test",
 ]
 
 [workspace.package]
@@ -25,6 +26,7 @@ ruse-runtime = { path = "crates/ruse-runtime" }
 ruse-components = { path = "crates/ruse-components" }
 ruse-glamour = { path = "crates/ruse-glamour" }
 ruse = { path = "crates/ruse" }
+ruse-test = { path = "crates/ruse-test" }
 
 unicode-width = "0.2"
 unicode-segmentation = "1.12"

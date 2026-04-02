@@ -1,0 +1,12 @@
+[package]
+name = "ruse-test"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+description = "Testing harness for ruse TUI applications"
+
+[dependencies]
+ruse-runtime.workspace = true
+ruse-ansi.workspace = true
+tokio.workspace = true
+insta = "1"

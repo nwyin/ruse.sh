@@ -111,6 +111,8 @@ pub struct Program<M: Model> {
     kitty_keyboard: bool,
     disable_renderer: bool,
     disable_signals: bool,
+    headless: bool,
+    headless_size: (u16, u16),
     filter: Option<MessageFilter<M>>,
     external_cancel: Option<CancellationToken>,
 }
@@ -128,6 +130,8 @@ impl<M: Model> Program<M> {
             kitty_keyboard: false,
             disable_renderer: false,
             disable_signals: false,
+            headless: false,
+            headless_size: (80, 24),
             filter: None,
             external_cancel: None,
         }
@@ -184,6 +188,25 @@ impl<M: Model> Program<M> {
 
     /// Disable the signal handler.
     pub fn without_signal_handler(mut self) -> Self {
+        self.disable_signals = true;
+        self
+    }
+
+    /// Run in headless mode: skip all terminal I/O (raw mode, alt screen,
+    /// mouse capture, input reader). Implies `without_renderer()` and
+    /// `without_signal_handler()`. Uses 80x24 as the default terminal size.
+    pub fn headless(mut self) -> Self {
+        self.headless = true;
+        self.disable_renderer = true;
+        self.disable_signals = true;
+        self
+    }
+
+    /// Run in headless mode with a specific terminal size.
+    pub fn headless_with_size(mut self, width: u16, height: u16) -> Self {
+        self.headless = true;
+        self.headless_size = (width, height);
+        self.disable_renderer = true;
         self.disable_signals = true;
         self
     }
@@ -293,62 +316,68 @@ impl<M: Model> Program<M> {
         mut msg_rx: mpsc::UnboundedReceiver<Msg>,
         cancel: CancellationToken,
     ) -> Result<M, ProgramError> {
-        // Enable raw mode
-        terminal::enable_raw_mode()?;
-
         let mut stdout = io::stdout();
         let mut current_alt_screen = false;
         let mut current_mouse_mode = MouseMode::None;
         let mut current_report_focus = false;
-
-        // Set up initial terminal state
-        if self.alt_screen {
-            execute!(stdout, terminal::EnterAlternateScreen)?;
-            current_alt_screen = true;
-        }
-
-        match self.mouse_mode {
-            MouseMode::CellMotion | MouseMode::AllMotion => {
-                execute!(stdout, event::EnableMouseCapture)?;
-                current_mouse_mode = self.mouse_mode;
-            }
-            MouseMode::None => {}
-        }
-
-        if self.report_focus {
-            execute!(stdout, event::EnableFocusChange)?;
-            current_report_focus = true;
-        }
-
         let mut current_bracketed_paste = false;
-        if self.bracketed_paste {
-            execute!(stdout, event::EnableBracketedPaste)?;
-            current_bracketed_paste = true;
-        }
-
         let mut current_kitty_keyboard = false;
-        if self.kitty_keyboard {
-            let _ = execute!(
-                stdout,
-                event::PushKeyboardEnhancementFlags(
-                    event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                )
-            );
-            current_kitty_keyboard = true;
-        }
 
-        // Install the drop guard for cleanup
-        let guard = TerminalGuard {
-            alt_screen: current_alt_screen,
-            mouse_mode: current_mouse_mode,
-            report_focus: current_report_focus,
-            bracketed_paste: current_bracketed_paste,
-            kitty_keyboard: current_kitty_keyboard,
-            raw_mode: true,
+        // In headless mode, skip all terminal I/O setup
+        let guard = if !self.headless {
+            terminal::enable_raw_mode()?;
+
+            if self.alt_screen {
+                execute!(stdout, terminal::EnterAlternateScreen)?;
+                current_alt_screen = true;
+            }
+
+            match self.mouse_mode {
+                MouseMode::CellMotion | MouseMode::AllMotion => {
+                    execute!(stdout, event::EnableMouseCapture)?;
+                    current_mouse_mode = self.mouse_mode;
+                }
+                MouseMode::None => {}
+            }
+
+            if self.report_focus {
+                execute!(stdout, event::EnableFocusChange)?;
+                current_report_focus = true;
+            }
+
+            if self.bracketed_paste {
+                execute!(stdout, event::EnableBracketedPaste)?;
+                current_bracketed_paste = true;
+            }
+
+            if self.kitty_keyboard {
+                let _ = execute!(
+                    stdout,
+                    event::PushKeyboardEnhancementFlags(
+                        event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                    )
+                );
+                current_kitty_keyboard = true;
+            }
+
+            Some(TerminalGuard {
+                alt_screen: current_alt_screen,
+                mouse_mode: current_mouse_mode,
+                report_focus: current_report_focus,
+                bracketed_paste: current_bracketed_paste,
+                kitty_keyboard: current_kitty_keyboard,
+                raw_mode: true,
+            })
+        } else {
+            None
         };
 
         // Set up the cell-buffer based screen renderer
-        let (term_w, term_h) = terminal::size().unwrap_or((80, 24));
+        let (term_w, term_h) = if self.headless {
+            self.headless_size
+        } else {
+            terminal::size().unwrap_or((80, 24))
+        };
         let mut screen = cellbuf::Screen::new(term_w, term_h);
         let mut last_view_hash: Option<u64> = None;
         let mut render_dirty = false;
@@ -394,29 +423,33 @@ impl<M: Model> Program<M> {
             last_view_hash = Some(hash_string(&view.content));
         }
 
-        // Spawn input reader task
-        let input_cancel = cancel.clone();
-        let input_msg_tx = msg_tx.clone();
-        let input_handle = tokio::spawn(async move {
-            let mut reader = EventStream::new();
-            loop {
-                tokio::select! {
-                    _ = input_cancel.cancelled() => break,
-                    maybe_event = reader.next() => {
-                        match maybe_event {
-                            Some(Ok(event)) => {
-                                if let Some(msg) = translate_event(event)
-                                    && input_msg_tx.send(msg).is_err() {
-                                        break;
-                                    }
+        // Spawn input reader task (skipped in headless mode)
+        let input_handle = if !self.headless {
+            let input_cancel = cancel.clone();
+            let input_msg_tx = msg_tx.clone();
+            Some(tokio::spawn(async move {
+                let mut reader = EventStream::new();
+                loop {
+                    tokio::select! {
+                        _ = input_cancel.cancelled() => break,
+                        maybe_event = reader.next() => {
+                            match maybe_event {
+                                Some(Ok(event)) => {
+                                    if let Some(msg) = translate_event(event)
+                                        && input_msg_tx.send(msg).is_err() {
+                                            break;
+                                        }
+                                }
+                                Some(Err(_)) => break,
+                                None => break,
                             }
-                            Some(Err(_)) => break,
-                            None => break,
                         }
                     }
                 }
-            }
-        });
+            }))
+        } else {
+            None
+        };
 
         // Spawn command handler task
         let cmd_cancel = cancel.clone();
@@ -508,55 +541,68 @@ impl<M: Model> Program<M> {
                             let msg = match msg {
                                 Msg::Custom(any) if any.is::<ExecRequest>() => {
                                     let exec_req = *any.downcast::<ExecRequest>().expect("type checked in match guard");
-                                    // Release terminal
-                                    let _ = terminal::disable_raw_mode();
-                                    if current_alt_screen {
-                                        let _ = execute!(stdout, terminal::LeaveAlternateScreen);
-                                    }
-                                    let _ = execute!(stdout, cursor::Show);
+                                    if self.headless {
+                                        // In headless mode, skip subprocess but deliver error
+                                        let callback_msg = (exec_req.callback)(Err(io::Error::new(
+                                            io::ErrorKind::Unsupported,
+                                            "exec not available in headless mode",
+                                        )));
+                                        if let Some(cmd_inner) = self.model.update(callback_msg) {
+                                            let _ = cmd_tx.send(cmd_inner);
+                                        }
+                                    } else {
+                                        // Release terminal
+                                        let _ = terminal::disable_raw_mode();
+                                        if current_alt_screen {
+                                            let _ = execute!(stdout, terminal::LeaveAlternateScreen);
+                                        }
+                                        let _ = execute!(stdout, cursor::Show);
 
-                                    // Execute subprocess
-                                    let status = std::process::Command::new(&exec_req.program)
-                                        .args(&exec_req.args)
-                                        .status();
+                                        // Execute subprocess
+                                        let status = std::process::Command::new(&exec_req.program)
+                                            .args(&exec_req.args)
+                                            .status();
 
-                                    // Restore terminal
-                                    let _ = terminal::enable_raw_mode();
-                                    if current_alt_screen {
-                                        let _ = execute!(stdout, terminal::EnterAlternateScreen);
-                                    }
-                                    if current_bracketed_paste {
-                                        let _ = execute!(stdout, event::EnableBracketedPaste);
-                                    }
-                                    if current_kitty_keyboard {
-                                        let _ = execute!(
-                                            stdout,
-                                            event::PushKeyboardEnhancementFlags(
-                                                event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
-                                            )
-                                        );
-                                    }
-                                    screen.clear();
-                                    render_dirty = true;
+                                        // Restore terminal
+                                        let _ = terminal::enable_raw_mode();
+                                        if current_alt_screen {
+                                            let _ = execute!(stdout, terminal::EnterAlternateScreen);
+                                        }
+                                        if current_bracketed_paste {
+                                            let _ = execute!(stdout, event::EnableBracketedPaste);
+                                        }
+                                        if current_kitty_keyboard {
+                                            let _ = execute!(
+                                                stdout,
+                                                event::PushKeyboardEnhancementFlags(
+                                                    event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                                                )
+                                            );
+                                        }
+                                        screen.clear();
+                                        render_dirty = true;
 
-                                    // Deliver callback result
-                                    let callback_msg = (exec_req.callback)(status);
-                                    if let Some(cmd_inner) = self.model.update(callback_msg) {
-                                        let _ = cmd_tx.send(cmd_inner);
+                                        // Deliver callback result
+                                        let callback_msg = (exec_req.callback)(status);
+                                        if let Some(cmd_inner) = self.model.update(callback_msg) {
+                                            let _ = cmd_tx.send(cmd_inner);
+                                        }
                                     }
                                     continue;
                                 }
                                 Msg::Custom(any) if any.is::<RawSequence>() => {
-                                    let raw_seq = *any.downcast::<RawSequence>().expect("type checked in match guard");
-                                    let _ = stdout.write_all(raw_seq.0.as_bytes());
-                                    let _ = stdout.flush();
+                                    if !self.headless {
+                                        let raw_seq = *any.downcast::<RawSequence>().expect("type checked in match guard");
+                                        let _ = stdout.write_all(raw_seq.0.as_bytes());
+                                        let _ = stdout.flush();
+                                    }
                                     continue;
                                 }
                                 other => other,
                             };
 
-                            // Handle suspend (Unix SIGTSTP)
-                            if matches!(msg, Msg::Suspend) {
+                            // Handle suspend (Unix SIGTSTP) — skip in headless mode
+                            if matches!(msg, Msg::Suspend) && !self.headless {
                                 #[cfg(unix)]
                                 {
                                     // Release terminal
@@ -719,19 +765,23 @@ impl<M: Model> Program<M> {
         // Cancel all tasks
         cancel.cancel();
 
-        // Update the guard
-        let _guard = TerminalGuard {
-            alt_screen: current_alt_screen,
-            mouse_mode: current_mouse_mode,
-            report_focus: current_report_focus,
-            bracketed_paste: current_bracketed_paste,
-            kitty_keyboard: current_kitty_keyboard,
-            raw_mode: true,
-        };
-        std::mem::forget(guard);
+        // Update the guard (in headless mode there's no guard to update)
+        if !self.headless {
+            let _guard = TerminalGuard {
+                alt_screen: current_alt_screen,
+                mouse_mode: current_mouse_mode,
+                report_focus: current_report_focus,
+                bracketed_paste: current_bracketed_paste,
+                kitty_keyboard: current_kitty_keyboard,
+                raw_mode: true,
+            };
+            std::mem::forget(guard);
+        }
 
         // Wait for tasks
-        let _ = tokio::time::timeout(std::time::Duration::from_millis(100), input_handle).await;
+        if let Some(h) = input_handle {
+            let _ = tokio::time::timeout(std::time::Duration::from_millis(100), h).await;
+        }
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), cmd_handle).await;
         let _ = tokio::time::timeout(std::time::Duration::from_millis(100), render_handle).await;
         #[cfg(unix)]
