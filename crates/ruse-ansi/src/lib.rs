@@ -11,6 +11,7 @@ pub mod sgr;
 pub mod sixel;
 pub mod strip;
 pub mod truncate;
+mod util;
 pub mod vt;
 pub mod width;
 pub mod wrap;

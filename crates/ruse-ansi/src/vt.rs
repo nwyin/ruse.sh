@@ -1,5 +1,6 @@
 use crate::cellbuf::{AttrMask, Buffer, Cell, CellStyle, UnderlineStyle};
 use crate::parser::{Handler, Parser};
+use crate::util::{ansi_256_to_rgb, ansi_basic_color};
 
 /// VT102/xterm terminal emulator.
 ///
@@ -609,45 +610,6 @@ fn erase_line_to(t: &mut Terminal, x: u16, y: u16) {
         {
             cell.make_blank();
         }
-    }
-}
-
-/// Convert ANSI 256-color index to RGB.
-fn ansi_256_to_rgb(idx: u8) -> (u8, u8, u8) {
-    if idx < 16 {
-        ansi_basic_color(idx)
-    } else if idx < 232 {
-        let n = idx - 16;
-        let b = (n % 6) * 51;
-        let g = ((n / 6) % 6) * 51;
-        let r = (n / 36) * 51;
-        (r, g, b)
-    } else {
-        let v = 8 + (idx - 232) * 10;
-        (v, v, v)
-    }
-}
-
-/// Convert ANSI basic color index (0-15) to RGB.
-fn ansi_basic_color(idx: u8) -> (u8, u8, u8) {
-    match idx {
-        0 => (0, 0, 0),
-        1 => (170, 0, 0),
-        2 => (0, 170, 0),
-        3 => (170, 170, 0),
-        4 => (0, 0, 170),
-        5 => (170, 0, 170),
-        6 => (0, 170, 170),
-        7 => (170, 170, 170),
-        8 => (85, 85, 85),
-        9 => (255, 85, 85),
-        10 => (85, 255, 85),
-        11 => (255, 255, 85),
-        12 => (85, 85, 255),
-        13 => (255, 85, 255),
-        14 => (85, 255, 255),
-        15 => (255, 255, 255),
-        _ => (0, 0, 0),
     }
 }
 
