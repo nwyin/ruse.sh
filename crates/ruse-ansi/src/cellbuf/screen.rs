@@ -515,7 +515,7 @@ impl Screen {
 
         // Method 1: Absolute CUP (always works)
         let abs_seq = format!("\x1b[{};{}H", ty + 1, tx + 1);
-        let mut best = abs_seq.clone();
+        let mut best = abs_seq;
 
         // Method 2: Relative movements
         let mut rel = String::new();

@@ -275,7 +275,7 @@ impl TermRenderer {
                         CodeBlockKind::Indented => None,
                     };
                     in_code_block = true;
-                    code_lang = lang.clone();
+                    code_lang = lang;
                     code_buf.clear();
                     stack.push(Context::CodeBlock);
                 }
