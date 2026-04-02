@@ -209,8 +209,7 @@ impl<M: Model> Program<M> {
     pub async fn run(self) -> Result<M, ProgramError> {
         let (msg_tx, msg_rx) = mpsc::unbounded_channel::<Msg>();
         let cancel = CancellationToken::new();
-        self.run_with_panic_recovery(msg_tx, msg_rx, cancel)
-            .await
+        self.run_with_panic_recovery(msg_tx, msg_rx, cancel).await
     }
 
     /// Run the program, returning a handle for external message injection.
@@ -234,9 +233,7 @@ impl<M: Model> Program<M> {
         };
 
         let fut = Box::pin(async move {
-            let result = self
-                .run_with_panic_recovery(msg_tx, msg_rx, cancel)
-                .await;
+            let result = self.run_with_panic_recovery(msg_tx, msg_rx, cancel).await;
             finished.notify_waiters();
             result
         });

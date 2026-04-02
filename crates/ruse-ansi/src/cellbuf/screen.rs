@@ -897,11 +897,19 @@ fn parse_sgr_impl(params: &[u8], style: &mut CellStyle) {
             }
             59 => style.ul = None,
             90..=97 => {
-                let idx = p.parse::<u32>().expect("SGR parameter already validated as u32") - 90 + 8;
+                let idx = p
+                    .parse::<u32>()
+                    .expect("SGR parameter already validated as u32")
+                    - 90
+                    + 8;
                 style.fg = Some(ansi_basic_color(idx as u8));
             }
             100..=107 => {
-                let idx = p.parse::<u32>().expect("SGR parameter already validated as u32") - 100 + 8;
+                let idx = p
+                    .parse::<u32>()
+                    .expect("SGR parameter already validated as u32")
+                    - 100
+                    + 8;
                 style.bg = Some(ansi_basic_color(idx as u8));
             }
             _ => {}

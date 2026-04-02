@@ -314,7 +314,11 @@ impl TextArea {
                 // Pad to content width
                 let visible_width = ruse_ansi::string_width(&line_out);
                 if content_width > visible_width {
-                    line_out.push_str(&self.style.render(&[&" ".repeat(content_width - visible_width)]));
+                    line_out.push_str(
+                        &self
+                            .style
+                            .render(&[&" ".repeat(content_width - visible_width)]),
+                    );
                 }
                 out.push_str(&line_out);
             } else {
@@ -322,7 +326,11 @@ impl TextArea {
                 // Pad to content width
                 let visible_width = ruse_ansi::string_width(&display);
                 if content_width > visible_width {
-                    out.push_str(&self.style.render(&[&" ".repeat(content_width - visible_width)]));
+                    out.push_str(
+                        &self
+                            .style
+                            .render(&[&" ".repeat(content_width - visible_width)]),
+                    );
                 }
             }
         }
