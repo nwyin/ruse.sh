@@ -28,7 +28,7 @@ pub mod prelude {
     // Runtime
     pub use ruse_runtime::{
         Cmd, CmdInner, KeyCode, KeyEvent, Model, Modifiers, MouseButton, MouseEvent, MouseMode,
-        Msg, Program, ProgramError, Rect, View,
+        Msg, Pane, PaneLayout, Program, ProgramError, Rect, Scene, View,
     };
     pub use ruse_runtime::{
         ProgramHandle, batch, clear_screen, cmd, cmd_async, every, exec, println, quit, raw,

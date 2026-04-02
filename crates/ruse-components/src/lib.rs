@@ -4,6 +4,7 @@ pub mod help;
 pub mod key;
 pub mod list;
 pub mod paginator;
+mod pane_impls;
 pub mod progress;
 pub mod spinner;
 pub mod stopwatch;

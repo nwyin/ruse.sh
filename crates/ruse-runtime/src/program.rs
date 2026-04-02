@@ -22,12 +22,17 @@ struct TerminalGuard {
     alt_screen: bool,
     mouse_mode: MouseMode,
     report_focus: bool,
+    bracketed_paste: bool,
     raw_mode: bool,
 }
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let mut stdout = io::stdout();
+
+        if self.bracketed_paste {
+            let _ = execute!(stdout, event::DisableBracketedPaste);
+        }
 
         if self.report_focus {
             let _ = execute!(stdout, event::DisableFocusChange);
@@ -95,6 +100,7 @@ pub struct Program<M: Model> {
     alt_screen: bool,
     mouse_mode: MouseMode,
     report_focus: bool,
+    bracketed_paste: bool,
     disable_renderer: bool,
     #[allow(dead_code)]
     disable_signals: bool,
@@ -111,6 +117,7 @@ impl<M: Model> Program<M> {
             alt_screen: false,
             mouse_mode: MouseMode::None,
             report_focus: false,
+            bracketed_paste: false,
             disable_renderer: false,
             disable_signals: false,
             filter: None,
@@ -139,6 +146,16 @@ impl<M: Model> Program<M> {
     /// Enable focus reporting.
     pub fn with_focus_report(mut self) -> Self {
         self.report_focus = true;
+        self
+    }
+
+    /// Enable bracketed paste mode.
+    ///
+    /// When enabled, pasted text arrives as a single `Msg::Paste(String)`
+    /// instead of individual key events. This also suppresses macOS paste
+    /// confirmation dialogs for multi-line content.
+    pub fn with_bracketed_paste(mut self) -> Self {
+        self.bracketed_paste = true;
         self
     }
 
@@ -290,11 +307,18 @@ impl<M: Model> Program<M> {
             current_report_focus = true;
         }
 
+        let mut current_bracketed_paste = false;
+        if self.bracketed_paste {
+            execute!(stdout, event::EnableBracketedPaste)?;
+            current_bracketed_paste = true;
+        }
+
         // Install the drop guard for cleanup
         let guard = TerminalGuard {
             alt_screen: current_alt_screen,
             mouse_mode: current_mouse_mode,
             report_focus: current_report_focus,
+            bracketed_paste: current_bracketed_paste,
             raw_mode: true,
         };
 
@@ -474,6 +498,9 @@ impl<M: Model> Program<M> {
                                     if current_alt_screen {
                                         let _ = execute!(stdout, terminal::EnterAlternateScreen);
                                     }
+                                    if current_bracketed_paste {
+                                        let _ = execute!(stdout, event::EnableBracketedPaste);
+                                    }
                                     screen.clear();
                                     render_dirty = true;
 
@@ -515,6 +542,9 @@ impl<M: Model> Program<M> {
                                     let _ = terminal::enable_raw_mode();
                                     if current_alt_screen {
                                         let _ = execute!(stdout, terminal::EnterAlternateScreen);
+                                    }
+                                    if current_bracketed_paste {
+                                        let _ = execute!(stdout, event::EnableBracketedPaste);
                                     }
                                     screen.clear();
                                     render_dirty = true;
@@ -650,6 +680,7 @@ impl<M: Model> Program<M> {
             alt_screen: current_alt_screen,
             mouse_mode: current_mouse_mode,
             report_focus: current_report_focus,
+            bracketed_paste: current_bracketed_paste,
             raw_mode: true,
         };
         std::mem::forget(guard);

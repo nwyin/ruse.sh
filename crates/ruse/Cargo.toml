@@ -37,3 +37,7 @@ path = "examples/viewport.rs"
 [[example]]
 name = "spinner"
 path = "examples/spinner.rs"
+
+[[example]]
+name = "composite"
+path = "examples/composite.rs"
