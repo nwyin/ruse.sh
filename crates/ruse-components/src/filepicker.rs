@@ -80,7 +80,6 @@ pub struct FilePicker {
     height: usize,
     y_offset: usize,
     show_hidden: bool,
-    #[allow(dead_code)]
     show_permissions: bool,
     show_size: bool,
     allowed_types: Vec<String>,
