@@ -152,7 +152,7 @@ fn to_alphabet(mut n: usize) -> String {
         n = n / 26 - 1;
     }
     out.reverse();
-    String::from_utf8(out).unwrap()
+    String::from_utf8(out).expect("ASCII bytes are always valid UTF-8")
 }
 
 #[cfg(test)]

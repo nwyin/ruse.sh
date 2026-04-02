@@ -150,7 +150,7 @@ pub fn blend_1d(steps: usize, stops: &[Color]) -> Vec<Color> {
     }
 
     let to_lab = |c: Color| -> Lab {
-        let (r, g, b) = c.to_rgb().unwrap();
+        let (r, g, b) = c.to_rgb().expect("color must have RGB representation (NoColor should be filtered before this point)");
         let srgb = Srgb::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0);
         Lab::from_color(srgb)
     };
