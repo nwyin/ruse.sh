@@ -160,7 +160,7 @@ fn flatten(layer: &Layer, parent_x: i32, parent_y: i32, out: &mut Vec<FlatLayer>
     let height = lines.len() as u32;
     let width = lines
         .iter()
-        .map(|l| l.chars().count() as u32)
+        .map(|l| ruse_ansi::string_width(l) as u32)
         .max()
         .unwrap_or(0);
 
