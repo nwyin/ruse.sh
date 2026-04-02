@@ -23,12 +23,17 @@ struct TerminalGuard {
     mouse_mode: MouseMode,
     report_focus: bool,
     bracketed_paste: bool,
+    kitty_keyboard: bool,
     raw_mode: bool,
 }
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let mut stdout = io::stdout();
+
+        if self.kitty_keyboard {
+            let _ = execute!(stdout, event::PopKeyboardEnhancementFlags);
+        }
 
         if self.bracketed_paste {
             let _ = execute!(stdout, event::DisableBracketedPaste);
@@ -101,6 +106,7 @@ pub struct Program<M: Model> {
     mouse_mode: MouseMode,
     report_focus: bool,
     bracketed_paste: bool,
+    kitty_keyboard: bool,
     disable_renderer: bool,
     #[allow(dead_code)]
     disable_signals: bool,
@@ -118,6 +124,7 @@ impl<M: Model> Program<M> {
             mouse_mode: MouseMode::None,
             report_focus: false,
             bracketed_paste: false,
+            kitty_keyboard: false,
             disable_renderer: false,
             disable_signals: false,
             filter: None,
@@ -156,6 +163,15 @@ impl<M: Model> Program<M> {
     /// confirmation dialogs for multi-line content.
     pub fn with_bracketed_paste(mut self) -> Self {
         self.bracketed_paste = true;
+        self
+    }
+
+    /// Enable Kitty keyboard protocol for enhanced key reporting.
+    ///
+    /// This allows distinguishing modifier combinations that standard terminal
+    /// input cannot differentiate, such as Shift+Enter vs Enter.
+    pub fn with_kitty_keyboard(mut self) -> Self {
+        self.kitty_keyboard = true;
         self
     }
 
@@ -313,12 +329,24 @@ impl<M: Model> Program<M> {
             current_bracketed_paste = true;
         }
 
+        let mut current_kitty_keyboard = false;
+        if self.kitty_keyboard {
+            let _ = execute!(
+                stdout,
+                event::PushKeyboardEnhancementFlags(
+                    event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                )
+            );
+            current_kitty_keyboard = true;
+        }
+
         // Install the drop guard for cleanup
         let guard = TerminalGuard {
             alt_screen: current_alt_screen,
             mouse_mode: current_mouse_mode,
             report_focus: current_report_focus,
             bracketed_paste: current_bracketed_paste,
+            kitty_keyboard: current_kitty_keyboard,
             raw_mode: true,
         };
 
@@ -501,6 +529,14 @@ impl<M: Model> Program<M> {
                                     if current_bracketed_paste {
                                         let _ = execute!(stdout, event::EnableBracketedPaste);
                                     }
+                                    if current_kitty_keyboard {
+                                        let _ = execute!(
+                                            stdout,
+                                            event::PushKeyboardEnhancementFlags(
+                                                event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                                            )
+                                        );
+                                    }
                                     screen.clear();
                                     render_dirty = true;
 
@@ -545,6 +581,14 @@ impl<M: Model> Program<M> {
                                     }
                                     if current_bracketed_paste {
                                         let _ = execute!(stdout, event::EnableBracketedPaste);
+                                    }
+                                    if current_kitty_keyboard {
+                                        let _ = execute!(
+                                            stdout,
+                                            event::PushKeyboardEnhancementFlags(
+                                                event::KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                                            )
+                                        );
                                     }
                                     screen.clear();
                                     render_dirty = true;
@@ -681,6 +725,7 @@ impl<M: Model> Program<M> {
             mouse_mode: current_mouse_mode,
             report_focus: current_report_focus,
             bracketed_paste: current_bracketed_paste,
+            kitty_keyboard: current_kitty_keyboard,
             raw_mode: true,
         };
         std::mem::forget(guard);
